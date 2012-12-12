@@ -125,9 +125,9 @@ class Testimonial extends DataObject
 }
 ```
 
-Most of this should look familiar. There's a new static member called `$translatable_fields` which defines the fields that should be translated. In addition you'll also have to add `Object::add_extension('MyDataObject', 'Testimonial');` in `mysite/_config.php`. 
+Most of this should look familiar. There's a new static member called `$translatable_fields` which defines the fields that should be translated. In addition you'll also have to add `Object::add_extension('Testimonial', 'TranslatableDataObject');` in `mysite/_config.php`. 
 
-You could also omit the `$translatable_fields` and write `Object::add_extension('MyDataObject', "Testimonial('Title','Content')");` in `mysite/_config.php` instead. Depending on the number of fields to translate, this could become unreadable and therefore you might prefer using `$translatable_fields`.
+You could also omit the `$translatable_fields` and write `Object::add_extension('Testimonial', "TranslatableDataObject('Title','Content')");` in `mysite/_config.php` instead. Depending on the number of fields to translate, this could become unreadable and therefore you might prefer using `$translatable_fields`.
 
 Another thing worth a closer look is the `getCMSFields` method. When we're not in the default locale, we transform the fields using a `TranslatableFormFieldTransformation` instance. This is very similar to what you're probably used to from the translatable module with its `Translatable_Transformation`. What this does is: It takes the given form-field and replaces it's name and content with the translated content. The original content will appear as *read-only* below the form field.
 
