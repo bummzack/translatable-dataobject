@@ -12,6 +12,7 @@ Credit goes to Uncle Cheese which inspired my with his [TranslatableDataObject](
 Requirements
 ------------
 
+ - [SilverStripe 3.0](http://www.silverstripe.org/stable-download/)
  - [translatable module](https://github.com/silverstripe/silverstripe-translatable)
 
 
