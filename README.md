@@ -30,15 +30,21 @@ The ideal/recommended way to define the locales for the modules is to set the al
 That way, the available locales are consistent throughout the CMS.
 Example:
 
-    Translatable::set_allowed_locales(array('en_US', 'fr_FR', 'de_DE'));
+```php
+Translatable::set_allowed_locales(array('en_US', 'fr_FR', 'de_DE'));
+```
 
 If you would like to set the locales for the `translatable-dataobject` module manually/separately, you can do the following:
 
-    TranslatableDataObject::set_locales(array('en_US', 'fr_FR'));
+```php
+TranslatableDataObject::set_locales(array('en_US', 'fr_FR'));
+```
 
 If both of these calls are being omitted, the module will get the locales from the site content using:
 
-    Translatable::get_existing_content_languages()
+```php
+Translatable::get_existing_content_languages()
+```
 
 Using this setup requires you to run `dev/build` whenever you add a new translation language to the system though.
 
@@ -46,67 +52,77 @@ Using this setup requires you to run `dev/build` whenever you add a new translat
 
 To make a DataObject translatable, a single line in `mysite/_config.php` is sufficient:
 
-    Object::add_extension('MyDataObject', 'TranslatableDataObject');
+```php
+Object::add_extension('MyDataObject', 'TranslatableDataObject');
+```
 
 Run `dev/build` afterwards, so that the additional DB fields can be created.
 By default, all `Varchar`, `Text` and `HTMLText` fields will be translated, while all other fields remain untouched.
 To alter these default-fields, you can configure them like this:
 
-    // only translate Varchar and HTMLText fields
-    TranslatableDataObject::set_default_fieldtypes(array('Varchar', 'HTMLText'));
+```php
+// only translate Varchar and HTMLText fields
+TranslatableDataObject::set_default_fieldtypes(array('Varchar', 'HTMLText'));
+```
 
 If you would like to specify the fields to localize manually, there's an extended syntax for `add_extension`. Eg.
 
-    // only translate the 'Title' and 'Content' field of "MyDataObject"
-    Object::add_extension('MyDataObject', "TranslatableDataObject('Title','Content')");
+```php
+// only translate the 'Title' and 'Content' field of "MyDataObject"
+Object::add_extension('MyDataObject', "TranslatableDataObject('Title','Content')");
+```
 
 Alternatively, you can also set the fields to translate in a static field on your DataObject. So inside your `MyDataObject` 
 class you could add something like this:
 
-    // create translatable fields for 'Title' and 'Content'
-    public static $translatable_fields = array(
-        'Title', 'Content'
-    );
+```php
+// create translatable fields for 'Title' and 'Content'
+public static $translatable_fields = array(
+    'Title', 'Content'
+);
+```
 
 ### Translations in the CMS
 
 Imagine you have a `TestimonialPage` that `has_many` testimonials and you're managing these Testimonials in a `GridField`.
 Let's start with the `Testimonial` DataObject:
 
-    class Testimonial extends DataObject
+```php
+class Testimonial extends DataObject
+{
+    public static $db = array(
+        'Title' => 'Varchar',
+        'Content' => 'HTMLText'
+    );
+
+    public static $has_one = array(
+        'TestimonialPage' => 'TestimonialPage'
+    );
+
+    public static $translatable_fields = array(
+        'Title',
+        'Content'
+    );
+
+    public function getCMSFields()
     {
-        public static $db = array(
-            'Title' => 'Varchar',
-            'Content' => 'HTMLText'
-        );
+        $titleField = new TextField('Title);
+        $contentField = new HtmlEditorField('Content');
 
-        public static $has_one = array(
-            'TestimonialPage' => 'TestimonialPage'
-        );
-
-        public static $translatable_fields = array(
-            'Title',
-            'Content'
-        );
-
-        public function getCMSFields()
-        {
-            $titleField = new TextField('Title);
-            $contentField = new HtmlEditorField('Content');
-    
-            // transform the fields if we're not in the default locale
-            if(Translatable::default_locale() != Translatable::get_current_locale()) {
-                $transformation = new TranslatableFormFieldTransformation($this);
-                $titleField = $transformation->transformFormField($titleField);
-                $contentField = $transformation->transformFormField($contentField);
-            }
-    
-            return new FieldList(
-                $titleField,
-                $contentField
-            );
+        // transform the fields if we're not in the default locale
+        if(Translatable::default_locale() != Translatable::get_current_locale()) {
+            $transformation = new TranslatableFormFieldTransformation($this);
+            $titleField = $transformation->transformFormField($titleField);
+            $contentField = $transformation->transformFormField($contentField);
         }
+
+        return new FieldList(
+            $titleField,
+            $contentField
+        );
     }
+}
+```
 
 Most of this should look familiar. There's a new static member called `$translatable_fields` which defines the fields that should be translated. In addition you'll also have to add `Object::add_extension('MyDataObject', 'Testimonial');` in `mysite/_config.php`. 
 
@@ -116,30 +132,32 @@ Another thing worth a closer look is the `getCMSFields` method. When we're not i
 
 Now for the Testimonial-Page:
 
-    class TestimonialPage extends Page
+```php
+class TestimonialPage extends Page
+{
+    public static $has_many = array(
+        'Testimonials' => 'Testimonial' 
+    );
+
+    public function getCMSFields()
     {
-        public static $has_many = array(
-            'Testimonials' => 'Testimonial' 
-        );
+        $fields = parent::getCMSFields();
     
-        public function getCMSFields()
-        {
-            $fields = parent::getCMSFields();
-        
-            // manage testimonials
-            $gridConfig = GridFieldConfig_RelationEditor::create();
-            $gridField = new GridField('Testimonials', 'Testimonials', $this->Master()->Testimonials(), $gridConfig);
-            $gridField->setModelClass('Testimonial');
-            $fields->addFieldsToTab('Root.Testimonials', $gridField);
-        
-            return $fields;
-        }
+        // manage testimonials
+        $gridConfig = GridFieldConfig_RelationEditor::create();
+        $gridField = new GridField('Testimonials', 'Testimonials', $this->Master()->Testimonials(), $gridConfig);
+        $gridField->setModelClass('Testimonial');
+        $fields->addFieldsToTab('Root.Testimonials', $gridField);
+    
+        return $fields;
     }
+}
 
-    class TestimonialPage_Controller extends Page_Controller
-    {
+class TestimonialPage_Controller extends Page_Controller
+{
 
-    }
+}
+```
     
 This looks even more like a regular page and you probably wonder what's so special here. The only thing that changed is that we use `$this->Master()->Testimonials()` instead of `$this->Testimonials()` as the GridField datasource. With this setup, you should be able to switch between different languages in the CMS and edit the testimonials each in the current language. *Give it a try*
 
@@ -149,21 +167,25 @@ Whenever you'll have to access your DataObjects, remember to use `$this->Master(
 
 `Master()` is a handy method in `translatable-dataobject/code/extensions/TranslatableUtility.php`. This extension will automatically be added to each `SiteTree` object with the installation of the translatable-dataobject module. It's a helper-method to get the master-translation of a page and can also be very useful in templates. So if you would like to output all testimonials in a template, you'd use:
 
+```html+smarty
     <h1>My testimonials</h1>
     <% loop Master.Testimonials %>
         <h2>$Title</h2>
         $Content
         <hr/>
     <% end_loop %>
-    
+```
+
 Another helpful method to be used in templates is `Languages`. It will return an `ArrayList` with all information you need to build a language-navigation. Drop something like this in your template:
 
+```html+smarty
     <ul class="langNav">
         <% loop Languages %>
         <li><a href="$Link" class="$LinkingMode" title="$Title.ATT">$Language</a></li>
         <% end_loop %>
     </ul>
-    
+```
+ 
 This will create a list of all available content-languages. The link will point to the translated page or to the home-page of that language if there's no translation in that language.
 
 Todo:
