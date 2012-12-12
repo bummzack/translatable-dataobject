@@ -28,7 +28,7 @@ class TranslatableDataObject extends DataExtension
 	protected static $localizedFields = array();
 	
 	// lock to prevent endless loop
-	protected static $collectorLock = false;
+	protected static $collectorLock = array();
 	
 	/**
 	 * Use table information and locales to dynamically build required table fields
@@ -44,13 +44,10 @@ class TranslatableDataObject extends DataExtension
 	}
 	
 	/**
-	 * A template accessor used to get the translated version of a given field
+	 * A template accessor used to get the translated version of a given field.
+	 * Does the same as @see getLocalizedValue
 	 *
 	 * ex: $T(Description) in the locale it_IT returns $yourClass->getField('Description__it_IT');
-	 *
-	 * @param string $field The field name to translate
-	 * @param boolean $strict if true, this won't fallback to the master version of the field!
-	 * @return string
 	 */
 	public function T($field, $strict = true) {
 		return $this->getLocalizedValue($field, $strict);
@@ -104,6 +101,8 @@ class TranslatableDataObject extends DataExtension
 		if($strict){
 			return $this->owner->getField($localizedField);
 		}
+		
+		// if not strict, check localized first and fallback to fieldname
 		return $this->owner->hasField($localizedField) 
 			 ? $this->owner->getField($localizedField) : $this->owner->getField($fieldName);
 	}
@@ -117,10 +116,10 @@ class TranslatableDataObject extends DataExtension
 			return self::$collectorCache[$class];
 		}
 		
-		if(self::$collectorLock){
+		if(isset(self::$collectorLock[$class]) && self::$collectorLock[$class]){
 			return null;
 		}
-		self::$collectorLock = true;
+		self::$collectorLock[$class] = true;
 		
 		// find the extension in the config (we do this to get the exact parameters)
 		$extensions = Config::inst()->get($class, 'extensions', Config::EXCLUDE_EXTRA_SOURCES);
@@ -189,7 +188,7 @@ class TranslatableDataObject extends DataExtension
 			}
 		}
 		self::$collectorCache[$class] = $additionalFields;
-		self::$collectorLock = false;
+		self::$collectorLock[$class] = false;
 		return $additionalFields;
 	}
 	
