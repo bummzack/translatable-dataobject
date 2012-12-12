@@ -48,5 +48,4 @@ class TranslatableFormFieldTransformation extends FormTransformation {
 		$nonEditableField_holder->insertBefore($originalField, $fieldname.'_original');
 		return $nonEditableField_holder;
 	}
-
 }

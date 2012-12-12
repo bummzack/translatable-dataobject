@@ -17,6 +17,16 @@ class TranslatableUtility extends DataExtension
 	
 	/**
 	 * Get a set of content languages (for quick language navigation)
+	 * @example
+	 * <code>
+	 * <!-- in your template -->
+	 * <ul class="langNav">
+	 * 		<% loop Languages %>
+	 * 		<li><a href="$Link" class="$LinkingMode" title="$Title.ATT">$Language</a></li>
+	 * 		<% end_loop %>
+	 * </ul>
+	 * </code>
+	 * 
 	 * @return ArrayList|null
 	 */
 	public function Languages(){

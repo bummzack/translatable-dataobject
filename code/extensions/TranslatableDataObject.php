@@ -27,6 +27,9 @@ class TranslatableDataObject extends DataExtension
 	// cache of classes and their localized fields
 	protected static $localizedFields = array();
 	
+	// lock to prevent endless loop
+	protected static $collectorLock = false;
+	
 	/**
 	 * Use table information and locales to dynamically build required table fields
 	 * @see DataExtension::extraStatics()
@@ -50,12 +53,7 @@ class TranslatableDataObject extends DataExtension
 	 * @return string
 	 */
 	public function T($field, $strict = true) {
-		$localizedField = self::localized_field($field);
-		if($strict){
-			return $this->getLocalizedValue($field);
-		}
-		return $this->owner->hasField($localizedField) 
-			 ? $this->owner->getField($localizedField) : $this->owner->getField($field);
+		return $this->getLocalizedValue($field, $strict);
 	}
 	
 	/**
@@ -98,11 +96,16 @@ class TranslatableDataObject extends DataExtension
 	/**
 	 * Get the localized value for a given field.
 	 * @param string $fieldName the name of the field without any locale extension. Eg. "Title"
+	 * @param boolean $strict if false, this will fallback to the master version of the field!
 	 */
-	public function getLocalizedValue($fieldName){
+	public function getLocalizedValue($fieldName, $strict = true){
 		$localizedField = $this->getLocalizedFieldName($fieldName);
 		
-		return $this->owner->getField($localizedField);
+		if($strict){
+			return $this->owner->getField($localizedField);
+		}
+		return $this->owner->hasField($localizedField) 
+			 ? $this->owner->getField($localizedField) : $this->owner->getField($fieldName);
 	}
 	
 	/**
@@ -114,6 +117,11 @@ class TranslatableDataObject extends DataExtension
 			return self::$collectorCache[$class];
 		}
 		
+		if(self::$collectorLock){
+			return null;
+		}
+		self::$collectorLock = true;
+		
 		// find the extension in the config (we do this to get the exact parameters)
 		$extensions = Config::inst()->get($class, 'extensions', Config::EXCLUDE_EXTRA_SOURCES);
 		$extensionString = null;
@@ -124,13 +132,10 @@ class TranslatableDataObject extends DataExtension
 			}
 		}
 		
-		// this is kind of a hack to prevent endless loops. Since DataObject::custom_database_fields
-		// will trigger the "extraStatics" method, we have to remove the extension temporarily
-		// to get all database fields (even the ones from other extensions), but excluding our own!
-		Object::remove_extension($class, $extensionString);
+		// Get all DB Fields
 		$fields = DataObject::custom_database_fields($class);
+		// Get all arguments
 		$arguments = self::getArguments($class);
-		Object::add_extension($class, $extensionString);
 		
 		$locales = null;
 		
@@ -184,6 +189,7 @@ class TranslatableDataObject extends DataExtension
 			}
 		}
 		self::$collectorCache[$class] = $additionalFields;
+		self::$collectorLock = false;
 		return $additionalFields;
 	}
 	
