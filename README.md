@@ -107,7 +107,7 @@ class Testimonial extends DataObject
 
     public function getCMSFields()
     {
-        $titleField = new TextField('Title);
+        $titleField = new TextField('Title');
         $contentField = new HtmlEditorField('Content');
 
         // transform the fields if we're not in the default locale
