@@ -171,8 +171,8 @@ Whenever you'll have to access your DataObjects, remember to use `$this->Master(
 ```html+smarty
     <h1>My testimonials</h1>
     <% loop Master.Testimonials %>
-        <h2>$Title</h2>
-        $Content
+        <h2>$T(Title)</h2>
+        $T(Content)
         <hr/>
     <% end_loop %>
 ```
