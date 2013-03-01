@@ -32,16 +32,18 @@ class TranslatableDataObject extends DataExtension
 	
 	/**
 	 * Use table information and locales to dynamically build required table fields
-	 * @see DataExtension::extraStatics()
+	 * @see DataExtension::get_extra_config()
 	 */
-	public function extraStatics($class = null, $extension = null) {
-		if($class == null){
-			$class = $this->ownerBaseClass;
+	public static function get_extra_config($class, $extension, $args) {
+		if($args){
+			self::$arguments[$class] = $args;
 		}
+		
 		return array (
-			'db' => $this->collectDBFields($class)
+			'db' => self::collectDBFields($class)
 		);
 	}
+	
 	
 	/**
 	 * A template accessor used to get the translated version of a given field.
@@ -60,8 +62,8 @@ class TranslatableDataObject extends DataExtension
 	public function updateFieldLabels(&$labels) {
 		parent::updateFieldLabels($labels);
 		
-		$statics = $this->extraStatics();
-		foreach($statics['db'] as $field => $type){
+		$statics = self::$collectorCache[$this->ownerBaseClass];
+		foreach($statics as $field => $type){
 			$parts = explode(TRANSLATABLE_COLUMN_SEPARATOR, $field);
 			$labels[$field] = FormField::name_to_label($parts[0]) . ' (' . $parts[1] . ')';
 		}
@@ -111,7 +113,7 @@ class TranslatableDataObject extends DataExtension
 	 * Collect all additional database fields of the given class.
 	 * @param string $class
 	 */
-	protected function collectDBFields($class){
+	protected static function collectDBFields($class){
 		if(isset(self::$collectorCache[$class])){
 			return self::$collectorCache[$class];
 		}
@@ -121,18 +123,11 @@ class TranslatableDataObject extends DataExtension
 		}
 		self::$collectorLock[$class] = true;
 		
-		// find the extension in the config (we do this to get the exact parameters)
-		$extensions = Config::inst()->get($class, 'extensions', Config::EXCLUDE_EXTRA_SOURCES);
-		$extensionString = null;
-		foreach($extensions as $extension){
-			if(substr($extension, 0, strlen($this->class)) == $this->class){
-				$extensionString = $extension;
-				break;
-			}
-		}
 		
 		// Get all DB Fields
-		$fields = DataObject::custom_database_fields($class);
+		$fields = array();
+		Config::inst()->get($class, 'db', Config::EXCLUDE_EXTRA_SOURCES, $fields);
+		
 		// Get all arguments
 		$arguments = self::getArguments($class);
 		
@@ -187,6 +182,7 @@ class TranslatableDataObject extends DataExtension
 				$additionalFields[$localizedName] = $fields[$field];
 			}
 		}
+		
 		self::$collectorCache[$class] = $additionalFields;
 		self::$collectorLock[$class] = false;
 		return $additionalFields;
@@ -278,7 +274,7 @@ class TranslatableDataObject extends DataExtension
 	public static function get_locales(){
 		return self::$locales;
 	}
-	
+	/*
 	public static function add_to_class($class, $extensionClass, $args = null) {
 		// no need to add class multiple times
 		if(array_key_exists($class, self::$arguments)){
@@ -290,7 +286,7 @@ class TranslatableDataObject extends DataExtension
 			self::$arguments[$class] = $args;
 		}
 	}
-	
+	*/
 	/**
 	 * Get the custom arguments for a given class. Either directly from how the extension
 	 * was defined, or lookup the 'translatable_fields' static variable
