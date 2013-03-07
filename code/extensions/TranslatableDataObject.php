@@ -44,6 +44,76 @@ class TranslatableDataObject extends DataExtension
 		);
 	}
 	
+	/**
+	 * Alter the CMS Fields in order to automatically present the 
+	 * correct ones based on current language.
+	 */
+	public function updateCMSFields(\FieldList $fields) {
+		parent::updateCMSFields($fields);
+
+		if (Translatable::default_locale() != Translatable::get_current_locale()) {
+			// Search for the correct fileds
+			
+			$fields = new FieldList();
+			$transformation = new TranslatableFormFieldTransformation($this->owner);
+			foreach (self::$collectorCache[$this->owner->class] as $translatableField => $type) {
+				
+				if (strpos($translatableField, Translatable::get_current_locale())) {
+					// Just add the correct language
+					
+					switch ($type) {
+						case 'Varchar':
+						case 'HTMLVarchar':
+							$field = new TextField($this->get_basename($translatableField));
+							break;
+						case 'Text':
+							$field = new TextareaField($this->get_basename($translatableField));
+							break;
+						case 'HTMLText':
+						default:
+							$field = new HtmlEditorField($this->get_basename($translatableField));
+							break;
+					}
+					$fields->push($transformation->transformFormField($field));
+				}
+			}
+			
+		} else {
+			// Remove other languages from master
+			foreach (self::$collectorCache[$this->owner->class] as $translatableField => $type) {
+				$fields->removeByName($translatableField);
+			}
+		}
+		
+	}
+
+	/**
+	 * Given a translatable field name, pull out the locale and 
+	 * return the raw field name.
+	 *
+	 * ex: "Description__fr_FR" -> "Description"
+	 *
+	 * @param string $field The name of the translated field
+	 * @return string
+	 */
+	private function get_basename($field) {
+		$retVal = explode(TRANSLATABLE_COLUMN_SEPARATOR, $field);
+		return reset($retVal);
+	}
+
+	/**
+	 * Given a translatable field name, pull out the raw field name and 
+	 * return the locale
+	 *
+	 * ex: "Description__fr_FR" -> "fr_FR"
+	 *
+	 * @param string $field The name of the translated field
+	 * @return string
+	 */
+	private function get_locale($field) {
+		$retVal = explode(TRANSLATABLE_COLUMN_SEPARATOR, $field);
+		return end($retVal);
+	}
 	
 	/**
 	 * A template accessor used to get the translated version of a given field.
