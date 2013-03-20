@@ -104,24 +104,6 @@ class Testimonial extends DataObject
         'Title',
         'Content'
     );
-
-    public function getCMSFields()
-    {
-        $titleField = new TextField('Title');
-        $contentField = new HtmlEditorField('Content');
-
-        // transform the fields if we're not in the default locale
-        if(Translatable::default_locale() != Translatable::get_current_locale()) {
-            $transformation = new TranslatableFormFieldTransformation($this);
-            $titleField = $transformation->transformFormField($titleField);
-            $contentField = $transformation->transformFormField($contentField);
-        }
-
-        return new FieldList(
-            $titleField,
-            $contentField
-        );
-    }
 }
 ```
 
@@ -169,12 +151,13 @@ Whenever you'll have to access your DataObjects, remember to use `$this->Master(
 `Master()` is a handy method in `translatable-dataobject/code/extensions/TranslatableUtility.php`. This extension will automatically be added to each `SiteTree` object with the installation of the translatable-dataobject module. It's a helper-method to get the master-translation of a page and can also be very useful in templates. So if you would like to output all testimonials in a template, you'd use:
 
 ```html+smarty
-    <h1>My testimonials</h1>
-    <% loop Master.Testimonials %>
-        <h2>$T(Title)</h2>
-        $T(Content)
-        <hr/>
-    <% end_loop %>
+		<h1>$Title</h1> <!-- Page Title -->
+		<p>$Content</p> <!-- Page Content -->
+		<% loop Master.Testimonials %>
+			<h2>$T(Title)</h2> <!-- DO Localized Title -->
+			$T(Content) <!-- DO Localized Content -->
+		<hr/>
+		<% end_loop %>
 ```
 
 Another helpful method to be used in templates is `Languages`. It will return an `ArrayList` with all information you need to build a language-navigation. Drop something like this in your template:
@@ -186,7 +169,13 @@ Another helpful method to be used in templates is `Languages`. It will return an
         <% end_loop %>
     </ul>
 ```
- 
+
+Or you can just include a prepackaged template:
+
+```html+smarty
+<% include TdLanguageSwitcher %>
+```
+
 This will create a list of all available content-languages. The link will point to the translated page or to the home-page of that language if there's no translation in that language.
 
 Todo:
