@@ -13,4 +13,4 @@ if(!defined('TRANSLATABLE_COLUMN_SEPARATOR')){
 	define('TRANSLATABLE_COLUMN_SEPARATOR', '__');
 }
 
-Object::add_extension('SiteTree', 'TranslatableUtility');
+SiteTree::add_extension('TranslatableUtility');
