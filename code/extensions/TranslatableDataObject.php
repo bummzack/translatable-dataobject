@@ -175,8 +175,11 @@ class TranslatableDataObject extends DataExtension
 		}
 		
 		// if not strict, check localized first and fallback to fieldname
-		return $this->owner->hasField($localizedField) 
-			 ? $this->owner->getField($localizedField) : $this->owner->getField($fieldName);
+		if($value = $this->owner->getField($localizedField)){
+			return $value;
+		}
+		
+		return $this->owner->getField($fieldName);
 	}
 	
 	/**
