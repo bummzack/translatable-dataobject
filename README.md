@@ -1,7 +1,7 @@
 translatable-dataobject
 ============
 
-An extension for SilverStripe 3.0 that adds translations of fields to DataObjects.
+An extension for SilverStripe 3.1 that adds translations of fields to DataObjects.
 Instead of creating new rows for translations, translations are added as columns. This way, there's only one
 DataObject instance which is consistent across all localizations, but which has localized fields.
 
@@ -12,7 +12,7 @@ Credit goes to Uncle Cheese which inspired my with his [TranslatableDataObject](
 Requirements
 ------------
 
- - [SilverStripe 3.1](http://www.silverstripe.org/stable-download/)
+ - [SilverStripe 3.1](https://github.com/silverstripe/)
  - [translatable module](https://github.com/silverstripe/silverstripe-translatable)
 
 
@@ -91,16 +91,16 @@ Let's start with the `Testimonial` DataObject:
 ```php
 class Testimonial extends DataObject
 {
-    public static $db = array(
+    private static $db = array(
         'Title' => 'Varchar',
         'Content' => 'HTMLText'
     );
 
-    public static $has_one = array(
+    private static $has_one = array(
         'TestimonialPage' => 'TestimonialPage'
     );
 
-    public static $translatable_fields = array(
+    private static $translatable_fields = array(
         'Title',
         'Content'
     );
@@ -118,11 +118,11 @@ Now for the Testimonial-Page:
 ```php
 class TestimonialPage extends Page
 {
-    public static $has_many = array(
+    private static $has_many = array(
         'Testimonials' => 'Testimonial' 
     );
 
-    public function getCMSFields()
+    private function getCMSFields()
     {
         $fields = parent::getCMSFields();
     
@@ -151,13 +151,13 @@ Whenever you'll have to access your DataObjects, remember to use `$this->Master(
 `Master()` is a handy method in `translatable-dataobject/code/extensions/TranslatableUtility.php`. This extension will automatically be added to each `SiteTree` object with the installation of the translatable-dataobject module. It's a helper-method to get the master-translation of a page and can also be very useful in templates. So if you would like to output all testimonials in a template, you'd use:
 
 ```html+smarty
-		<h1>$Title</h1> <!-- Page Title -->
-		<p>$Content</p> <!-- Page Content -->
-		<% loop Master.Testimonials %>
-			<h2>$T(Title)</h2> <!-- DO Localized Title -->
-			$T(Content) <!-- DO Localized Content -->
-		<hr/>
-		<% end_loop %>
+    <h1>$Title</h1> <!-- Page Title -->
+    <p>$Content</p> <!-- Page Content -->
+    <% loop Master.Testimonials %>
+        <h2>$T(Title)</h2> <!-- DO Localized Title -->
+        $T(Content) <!-- DO Localized Content -->
+    <hr/>
+    <% end_loop %>
 ```
 
 Another helpful method to be used in templates is `Languages`. It will return an `ArrayList` with all information you need to build a language-navigation. Drop something like this in your template:
