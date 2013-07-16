@@ -126,6 +126,8 @@ class TranslatableDataObject extends DataExtension
 	
 				if (strpos($translatableField, Translatable::get_current_locale())) {
 					$basename = $this->get_basename($translatableField);
+					$typeClean = (($p = strpos($type, '(')) !== false) ? substr($type, 0, $p) : $type;
+					
 					// Just add the correct language
 					switch ($type) {
 						case 'Varchar':
