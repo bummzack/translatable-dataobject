@@ -64,57 +64,88 @@ class TranslatableDataObject extends DataExtension
 			foreach (self::$collectorCache[$this->owner->class] as $translatableField => $type) {
 				
 				if (strpos($translatableField, Translatable::get_current_locale())) {
-					$basename = $this->get_basename($translatableField);
-					$typeClean = (($p = strpos($type, '(')) !== false) ? substr($type, 0, $p) : $type;
+					$basename = $this->getBasename($translatableField);
 					
-					// Just add the correct language
-					switch ($typeClean) {
-						case 'Varchar':
-						case 'HTMLVarchar':
-							$field = new TextField($basename);
-							break;
-						case 'Text':
-							$field = new TextareaField($basename);
-							break;
-						case 'HTMLText':
-						default:
-							$field = new HtmlEditorField($basename);
-							break;
-					}
+					$field = $this->getLocalizedFormField($basename, Translatable::default_locale());
 					$fields->replaceField($basename, $transformation->transformFormField($field));
 				}
 			} 
 		}
 	}
-
+	
 	/**
-	 * Given a translatable field name, pull out the locale and 
-	 * return the raw field name.
-	 *
-	 * ex: "Description__fr_FR" -> "Description"
-	 *
-	 * @param string $field The name of the translated field
-	 * @return string
+	 * Get a tabset with a tab for every language containing the translatable fields.
+	 * Example usage:
+	 * <code>
+	 *     public function getCMSFields(){
+	 *         $fields = new FieldList();
+	 *         $fields->add($this->getTranslatableTabSet());
+	 *         return $fields;
+	 *     }
+	 * </code>
+	 * @param string $title the title of the tabset to return. Defaults to "Root"
+	 * @return TabSet
 	 */
-	private function get_basename($field) {
-		$retVal = explode(TRANSLATABLE_COLUMN_SEPARATOR, $field);
-		return reset($retVal);
-	}
-
-	/**
-	 * Given a translatable field name, pull out the raw field name and 
-	 * return the locale
-	 *
-	 * ex: "Description__fr_FR" -> "fr_FR"
-	 *
-	 * @param string $field The name of the translated field
-	 * @return string
-	 */
-	private function get_locale($field) {
-		$retVal = explode(TRANSLATABLE_COLUMN_SEPARATOR, $field);
-		return end($retVal);
+	public function getTranslatableTabSet($title = 'Root'){
+		$set = new TabSet($title);
+		
+		// get target locales
+		$locales = self::get_target_locales();
+		
+		// get translated fields
+		$fieldNames = array_keys(self::$localizedFields[$this->owner->class]);
+		
+		
+		foreach($locales as $locale){
+			$langCode = strtoupper(i18n::get_lang_from_locale(i18n::get_lang_from_locale($locale)));
+			$langName = ucfirst(html_entity_decode(
+							i18n::get_language_name(i18n::get_lang_from_locale($locale), true),
+							ENT_NOQUOTES, 'UTF-8'));
+			
+			$tab = new Tab($langCode, $langName);
+			
+			foreach ($fieldNames as $fieldName) {
+				$tab->push($this->getLocalizedFormField($fieldName, $locale));
+			}
+			
+			$set->push($tab);
+		}
+		return $set;
 	}
 	
+	/**
+	 * Get a form field for the given field name
+	 * @param string $fieldName
+	 * @param string $locale
+	 * @return FormField
+	 */
+	public function getLocalizedFormField($fieldName, $locale){
+		$baseName = $this->getBasename($fieldName);
+		$localizedFieldName = self::localized_field($fieldName, $locale);
+		
+		$dbFields = array();
+		Config::inst()->get($this->owner->class, 'db', Config::EXCLUDE_EXTRA_SOURCES, $dbFields);
+		
+		$type = isset($dbFields[$baseName]) ? $dbFields[$baseName] : '';
+		$typeClean = (($p = strpos($type, '(')) !== false) ? substr($type, 0, $p) : $type;
+		$field = null;
+		
+		switch ($typeClean) {
+			case 'Varchar':
+			case 'HTMLVarchar':
+				$field = new TextField($localizedFieldName, $baseName);
+				break;
+			case 'Text':
+				$field = new TextareaField($localizedFieldName, $baseName);
+				break;
+			case 'HTMLText':
+			default:
+				$field = new HtmlEditorField($localizedFieldName, $baseName);
+				break;
+		}
+		return $field;
+	}
+
 	/**
 	 * A template accessor used to get the translated version of a given field.
 	 * Does the same as @see getLocalizedValue
@@ -183,82 +214,31 @@ class TranslatableDataObject extends DataExtension
 	}
 	
 	/**
-	 * Collect all additional database fields of the given class.
-	 * @param string $class
+	 * Given a translatable field name, pull out the locale and
+	 * return the raw field name.
+	 *
+	 * ex: "Description__fr_FR" -> "Description"
+	 *
+	 * @param string $field The name of the translated field
+	 * @return string
 	 */
-	protected static function collectDBFields($class){
-		if(isset(self::$collectorCache[$class])){
-			return self::$collectorCache[$class];
-		}
-		
-		if(isset(self::$collectorLock[$class]) && self::$collectorLock[$class]){
-			return null;
-		}
-		self::$collectorLock[$class] = true;
-		
-		
-		// Get all DB Fields
-		$fields = array();
-		Config::inst()->get($class, 'db', Config::EXCLUDE_EXTRA_SOURCES, $fields);
-		
-		// Get all arguments
-		$arguments = self::getArguments($class);
-		
-		$locales = null;
-		
-		// if locales are explicitly set, use these
-		if(is_array(self::$locales)){
-			$locales = self::$locales;
-		// otherwise check the allowed locales. If these have been set, use these
-		} else if(Translatable::get_allowed_locales() !== null){
-			$locales = Translatable::get_allowed_locales();
-		// last resort is to take the existing content languages
-		} else {
-			$locales = array_keys(Translatable::get_existing_content_languages());
-		}
-		
-		// remove the default locale
-		if(($index = array_search(Translatable::default_locale(), $locales)) !== false) {
-			array_splice($locales, $index, 1);
-		}
-		
-		// fields that should be translated
-		$fieldsToTranslate = array();
-		
-		// validate the arguments
-		if($arguments){
-			foreach($arguments as $field){
-				// only allow fields that are actually in our field list
-				if(array_key_exists($field, $fields)){
-					$fieldsToTranslate[] = $field;
-				}
-			}
-		} else {
-			// check for the given default field types and add all fields of that type
-			foreach($fields as $field => $type){
-				$typeClean = (($p = strpos($type, '(')) !== false) ? substr($type, 0, $p) : $type;
-				if(in_array($typeClean, self::$default_field_types)){
-					$fieldsToTranslate[] = $field;
-				}
-			}
-		}
-		
-		
-		// gather all the DB fields
-		$additionalFields = array();
-		self::$localizedFields[$class] = array();
-		foreach($fieldsToTranslate as $field){
-			self::$localizedFields[$class][$field] = array();
-			foreach($locales as $locale){
-				$localizedName = self::localized_field($field, $locale);
-				self::$localizedFields[$class][$field][] = $localizedName;
-				$additionalFields[$localizedName] = $fields[$field];
-			}
-		}
-		
-		self::$collectorCache[$class] = $additionalFields;
-		self::$collectorLock[$class] = false;
-		return $additionalFields;
+	protected function getBasename($field) {
+		$retVal = explode(TRANSLATABLE_COLUMN_SEPARATOR, $field);
+		return reset($retVal);
+	}
+	
+	/**
+	 * Given a translatable field name, pull out the raw field name and
+	 * return the locale
+	 *
+	 * ex: "Description__fr_FR" -> "fr_FR"
+	 *
+	 * @param string $field The name of the translated field
+	 * @return string
+	 */
+	protected function getLocale($field) {
+		$retVal = explode(TRANSLATABLE_COLUMN_SEPARATOR, $field);
+		return end($retVal);
 	}
 	
 	/**
@@ -347,19 +327,92 @@ class TranslatableDataObject extends DataExtension
 	public static function get_locales(){
 		return self::$locales;
 	}
-	/*
-	public static function add_to_class($class, $extensionClass, $args = null) {
-		// no need to add class multiple times
-		if(array_key_exists($class, self::$arguments)){
-			return;
+	
+	/**
+	 * Collect all additional database fields of the given class.
+	 * @param string $class
+	 */
+	protected static function collectDBFields($class){
+		if(isset(self::$collectorCache[$class])){
+			return self::$collectorCache[$class];
 		}
-		
-		// check if custom fields have been defined. If yes store arguments for later usage
-		if($args && is_array($args)){
-			self::$arguments[$class] = $args;
+	
+		if(isset(self::$collectorLock[$class]) && self::$collectorLock[$class]){
+			return null;
+		}
+		self::$collectorLock[$class] = true;
+	
+	
+		// Get all DB Fields
+		$fields = array();
+		Config::inst()->get($class, 'db', Config::EXCLUDE_EXTRA_SOURCES, $fields);
+	
+		// Get all arguments
+		$arguments = self::get_arguments($class);
+	
+		$locales = self::get_target_locales();
+	
+		// remove the default locale
+		if(($index = array_search(Translatable::default_locale(), $locales)) !== false) {
+			array_splice($locales, $index, 1);
+		}
+	
+		// fields that should be translated
+		$fieldsToTranslate = array();
+	
+		// validate the arguments
+		if($arguments){
+			foreach($arguments as $field){
+				// only allow fields that are actually in our field list
+				if(array_key_exists($field, $fields)){
+					$fieldsToTranslate[] = $field;
+				}
+			}
+		} else {
+			// check for the given default field types and add all fields of that type
+			foreach($fields as $field => $type){
+				$typeClean = (($p = strpos($type, '(')) !== false) ? substr($type, 0, $p) : $type;
+				if(in_array($typeClean, self::$default_field_types)){
+					$fieldsToTranslate[] = $field;
+				}
+			}
+		}
+	
+	
+		// gather all the DB fields
+		$additionalFields = array();
+		self::$localizedFields[$class] = array();
+		foreach($fieldsToTranslate as $field){
+			self::$localizedFields[$class][$field] = array();
+			foreach($locales as $locale){
+				$localizedName = self::localized_field($field, $locale);
+				self::$localizedFields[$class][$field][] = $localizedName;
+				$additionalFields[$localizedName] = $fields[$field];
+			}
+		}
+	
+		self::$collectorCache[$class] = $additionalFields;
+		self::$collectorLock[$class] = false;
+		return $additionalFields;
+	}
+	
+	/**
+	 * Get the locales that should be translated
+	 * @return array containing the locales to use
+	 */
+	protected static function get_target_locales(){
+		// if locales are explicitly set, use these
+		if(is_array(self::$locales)){
+			return self::$locales;
+			// otherwise check the allowed locales. If these have been set, use these
+		} else if(Translatable::get_allowed_locales() !== null){
+			return Translatable::get_allowed_locales();
+		} else {
+			// last resort is to take the existing content languages
+			return array_keys(Translatable::get_existing_content_languages());
 		}
 	}
-	*/
+	
 	/**
 	 * Get the custom arguments for a given class. Either directly from how the extension
 	 * was defined, or lookup the 'translatable_fields' static variable
@@ -367,7 +420,7 @@ class TranslatableDataObject extends DataExtension
 	 * @param string $class
 	 * @return array|null
 	 */
-	protected static function getArguments($class){
+	protected static function get_arguments($class){
 		if(isset(self::$arguments[$class])){
 			return self::$arguments[$class];
 		} else {
