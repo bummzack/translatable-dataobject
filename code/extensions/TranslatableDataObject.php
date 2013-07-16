@@ -27,9 +27,6 @@ class TranslatableDataObject extends DataExtension
 	// cache of classes and their localized fields
 	protected static $localizedFields = array();
 	
-	// lock to prevent endless loop
-	protected static $collectorLock = array();
-	
 	/**
 	 * Use table information and locales to dynamically build required table fields
 	 * @see DataExtension::extraStatics()
@@ -38,8 +35,9 @@ class TranslatableDataObject extends DataExtension
 		if($class == null){
 			$class = $this->ownerBaseClass;
 		}
-		return array (
-			'db' => $this->collectDBFields($class)
+		$fields = $this->collectDBFields($class);
+		return array(
+			'db' => $fields
 		);
 	}
 	
@@ -108,6 +106,61 @@ class TranslatableDataObject extends DataExtension
 	}
 	
 	/**
+	 * Alter the CMS Fields in order to automatically present the
+	 * correct ones based on current language.
+	 */
+	public function updateCMSFields(FieldList $fields) {
+		parent::updateCMSFields($fields);
+	
+		// remove all localized fields from the list (generated through scaffolding)
+		foreach (self::$collectorCache[$this->owner->class] as $translatableField => $type) {
+			$fields->removeByName($translatableField);
+		}
+	
+		// check if we're in a translation
+		if (Translatable::default_locale() != Translatable::get_current_locale()) {
+			$transformation = new TranslatableFormFieldTransformation($this->owner);
+	
+			// iterate through all localized fields
+			foreach (self::$collectorCache[$this->owner->class] as $translatableField => $type) {
+	
+				if (strpos($translatableField, Translatable::get_current_locale())) {
+					$basename = $this->get_basename($translatableField);
+					// Just add the correct language
+					switch ($type) {
+						case 'Varchar':
+						case 'HTMLVarchar':
+							$field = new TextField($basename);
+							break;
+						case 'Text':
+							$field = new TextareaField($basename);
+							break;
+						case 'HTMLText':
+						default:
+							$field = new HtmlEditorField($basename);
+							break;
+					}
+					$fields->replaceField($basename, $transformation->transformFormField($field));
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Given a translatable field name, pull out the locale and
+	 * return the raw field name.
+	 *
+	 * ex: "Description__fr_FR" -> "Description"
+	 *
+	 * @param string $field The name of the translated field
+	 * @return string
+	 */
+	private function get_basename($field) {
+		$retVal = explode(TRANSLATABLE_COLUMN_SEPARATOR, $field);
+		return reset($retVal);
+	}
+	
+	/**
 	 * Collect all additional database fields of the given class.
 	 * @param string $class
 	 */
@@ -116,26 +169,21 @@ class TranslatableDataObject extends DataExtension
 			return self::$collectorCache[$class];
 		}
 		
-		if(isset(self::$collectorLock[$class]) && self::$collectorLock[$class]){
-			return null;
-		}
-		self::$collectorLock[$class] = true;
-		
 		// find the extension in the config (we do this to get the exact parameters)
 		$extensions = Config::inst()->get($class, 'extensions', Config::EXCLUDE_EXTRA_SOURCES);
 		$extensionString = null;
 		foreach($extensions as $extension){
-			if(substr($extension, 0, strlen($this->class)) == $this->class){
+			if(substr($extension, 0, strlen($class)) == $class){
 				$extensionString = $extension;
 				break;
 			}
 		}
 		
-		// Get all DB Fields
-		$fields = DataObject::custom_database_fields($class);
+		$fields = array();
+		Config::inst()->get($class, 'db', Config::EXCLUDE_EXTRA_SOURCES, $fields);
+		
 		// Get all arguments
 		$arguments = self::getArguments($class);
-		
 		$locales = null;
 		
 		// if locales are explicitly set, use these
@@ -175,7 +223,6 @@ class TranslatableDataObject extends DataExtension
 			}
 		}
 		
-		
 		// gather all the DB fields
 		$additionalFields = array();
 		self::$localizedFields[$class] = array();
@@ -187,8 +234,8 @@ class TranslatableDataObject extends DataExtension
 				$additionalFields[$localizedName] = $fields[$field];
 			}
 		}
+		
 		self::$collectorCache[$class] = $additionalFields;
-		self::$collectorLock[$class] = false;
 		return $additionalFields;
 	}
 	
@@ -302,8 +349,9 @@ class TranslatableDataObject extends DataExtension
 		if(isset(self::$arguments[$class])){
 			return self::$arguments[$class];
 		} else {
-			if($staticFields = Config::inst()->get($class, 'translatable_fields', Config::FIRST_SET)){
+			if($staticFields = Config::inst()->get($class, 'translatable_fields', Config::EXCLUDE_EXTRA_SOURCES)){
 				if(is_array($staticFields) && !empty($staticFields)){
+					self::$arguments[$class] = $staticFields;
 					return $staticFields;
 				}
 			}

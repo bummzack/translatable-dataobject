@@ -199,6 +199,8 @@ Todo:
 Limitations
 ------------
 
+**The module currently only supports translations of DB fields that are part of the `DataObject` itself. Fields that are being added by extensions aren't translatable.**
+
 Since this extension adds more fields to a table, it is important to note that the number of localized fields and
 the number of languages could cause problems with the underlying database. Imagine a DataObject with 10 localizable fields
 and a site that will be translated into 5 other languages. This would add 50 columns to the table.
