@@ -45,7 +45,7 @@ class TranslatableFormFieldTransformation extends FormTransformation {
 		$nonEditableField->setName($fieldname.'_original');
 		$nonEditableField->addExtraClass('originallang');
 		$nonEditableField->setTitle('Original '.$originalField->Title());
-
+		
 		$nonEditableField_holder->insertBefore($originalField, $fieldname.'_original');
 		return $nonEditableField_holder;
 	}

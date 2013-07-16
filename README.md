@@ -78,7 +78,7 @@ class you could add something like this:
 
 ```php
 // create translatable fields for 'Title' and 'Content'
-public static $translatable_fields = array(
+private static $translatable_fields = array(
     'Title', 'Content'
 );
 ```
@@ -122,7 +122,7 @@ class TestimonialPage extends Page
         'Testimonials' => 'Testimonial' 
     );
 
-    private function getCMSFields()
+    public function getCMSFields()
     {
         $fields = parent::getCMSFields();
     
@@ -154,8 +154,8 @@ Whenever you'll have to access your DataObjects, remember to use `$this->Master(
     <h1>$Title</h1> <!-- Page Title -->
     <p>$Content</p> <!-- Page Content -->
     <% loop Master.Testimonials %>
-        <h2>$T(Title)</h2> <!-- DO Localized Title -->
-        $T(Content) <!-- DO Localized Content -->
+        <h2>$T(Title)</h2> <!-- Localized Title -->
+        $T(Content) <!-- Localized Content -->
     <hr/>
     <% end_loop %>
 ```

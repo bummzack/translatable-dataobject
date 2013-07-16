@@ -48,43 +48,41 @@ class TranslatableDataObject extends DataExtension
 	 * Alter the CMS Fields in order to automatically present the 
 	 * correct ones based on current language.
 	 */
-	public function updateCMSFields(\FieldList $fields) {
+	public function updateCMSFields(FieldList $fields) {
 		parent::updateCMSFields($fields);
-
+		
+		// remove all localized fields from the list (generated through scaffolding)
+		foreach (self::$collectorCache[$this->owner->class] as $translatableField => $type) {
+			$fields->removeByName($translatableField);
+		}
+		
+		// check if we're in a translation
 		if (Translatable::default_locale() != Translatable::get_current_locale()) {
-			// Search for the correct fileds
-			
-			$fields = new FieldList();
 			$transformation = new TranslatableFormFieldTransformation($this->owner);
+
+			// iterate through all localized fields
 			foreach (self::$collectorCache[$this->owner->class] as $translatableField => $type) {
 				
 				if (strpos($translatableField, Translatable::get_current_locale())) {
+					$basename = $this->get_basename($translatableField);
 					// Just add the correct language
-					
 					switch ($type) {
 						case 'Varchar':
 						case 'HTMLVarchar':
-							$field = new TextField($this->get_basename($translatableField));
+							$field = new TextField($basename);
 							break;
 						case 'Text':
-							$field = new TextareaField($this->get_basename($translatableField));
+							$field = new TextareaField($basename);
 							break;
 						case 'HTMLText':
 						default:
-							$field = new HtmlEditorField($this->get_basename($translatableField));
+							$field = new HtmlEditorField($basename);
 							break;
 					}
-					$fields->push($transformation->transformFormField($field));
+					$fields->replaceField($basename, $transformation->transformFormField($field));
 				}
-			}
-			
-		} else {
-			// Remove other languages from master
-			foreach (self::$collectorCache[$this->owner->class] as $translatableField => $type) {
-				$fields->removeByName($translatableField);
-			}
+			} 
 		}
-		
 	}
 
 	/**
