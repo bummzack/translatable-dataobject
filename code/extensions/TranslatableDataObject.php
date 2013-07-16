@@ -129,7 +129,7 @@ class TranslatableDataObject extends DataExtension
 					$typeClean = (($p = strpos($type, '(')) !== false) ? substr($type, 0, $p) : $type;
 					
 					// Just add the correct language
-					switch ($type) {
+					switch ($typeClean) {
 						case 'Varchar':
 						case 'HTMLVarchar':
 							$field = new TextField($basename);
