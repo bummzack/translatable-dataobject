@@ -13,8 +13,8 @@
 		}
 	],
 	"require":{
-		"silverstripe/framework": ">=3.1.x-dev,<4.0",
-		"silverstripe/cms": ">=3.1.x-dev,<4.0",
+		"silverstripe/framework": ">=3.0",
+		"silverstripe/cms": ">=3.0",
     	"silverstripe/translatable": "1.0.*@dev"
 	},
 	"support":{
