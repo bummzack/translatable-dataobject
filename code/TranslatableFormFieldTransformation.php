@@ -7,7 +7,8 @@ class TranslatableFormFieldTransformation extends FormTransformation {
 	private $original = null;
 
 	function __construct(DataObject $original) {
-		if(!DataObject::has_extension($original->class, 'TranslatableDataObject')){
+		$class = $original->class;
+		if(!$class::has_extension('TranslatableDataObject')){
 			trigger_error(
 				"Parameter given does not have the required 'TranslatableDataObject' extension", E_USER_ERROR);
 		}
@@ -26,13 +27,13 @@ class TranslatableFormFieldTransformation extends FormTransformation {
 
 	function transformFormField(FormField $field) {
 		$newfield = $field->performReadOnlyTransformation();
-
+		
 		$fieldname = $field->getName();
 		if($this->original->isLocalizedField($fieldname)){
 			$field->setName($this->original->getLocalizedFieldName($fieldname));
 			$field->setValue($this->original->getLocalizedValue($fieldname));
 		}
-	
+		
 		return $this->baseTransform($newfield, $field, $fieldname);
 	}
 
@@ -44,7 +45,7 @@ class TranslatableFormFieldTransformation extends FormTransformation {
 		$nonEditableField->setName($fieldname.'_original');
 		$nonEditableField->addExtraClass('originallang');
 		$nonEditableField->setTitle('Original '.$originalField->Title());
-
+		
 		$nonEditableField_holder->insertBefore($originalField, $fieldname.'_original');
 		return $nonEditableField_holder;
 	}
