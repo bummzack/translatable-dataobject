@@ -8,7 +8,11 @@ class TranslatableFormFieldTransformation extends FormTransformation {
 
 	function __construct(DataObject $original) {
 		$class = $original->class;
-		if(!$class::has_extension('TranslatableDataObject')){
+		
+		if(
+			(TD_SS_COMPATIBILITY == TD_COMPAT_SS30X && !Object::has_extension($class, 'TranslatableDataObject')) ||
+			(TD_SS_COMPATIBILITY == TD_COMPAT_SS31X && !$class::has_extension('TranslatableDataObject'))
+		){
 			trigger_error(
 				"Parameter given does not have the required 'TranslatableDataObject' extension", E_USER_ERROR);
 		}
