@@ -95,14 +95,27 @@ class TranslatableDataObject extends DataExtension
 		// get translated fields
 		$fieldNames = array_keys(self::$localizedFields[$this->owner->class]);
 		
+		$ambiguity = array();
+		foreach($locales as $locale){
+			$langCode = i18n::get_lang_from_locale($locale);
+			foreach($locales as $l){
+				if($l != $locale && i18n::get_lang_from_locale($l) == $langCode){
+					$parts = explode('_', $l);
+					$localePart = end($parts);
+					$ambiguity[$l] = $localePart;
+				}
+			}
+		}
 		
 		foreach($locales as $locale){
-			$langCode = strtoupper(i18n::get_lang_from_locale(i18n::get_lang_from_locale($locale)));
 			$langName = ucfirst(html_entity_decode(
 							i18n::get_language_name(i18n::get_lang_from_locale($locale), true),
 							ENT_NOQUOTES, 'UTF-8'));
 			
-			$tab = new Tab($langCode, $langName);
+			if(isset($ambiguity[$locale])){
+				$langName .= ' (' . $ambiguity[$locale] . ')';
+			}
+			$tab = new Tab($locale, $langName);
 			
 			foreach ($fieldNames as $fieldName) {
 				$tab->push($this->getLocalizedFormField($fieldName, $locale));

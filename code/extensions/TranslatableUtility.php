@@ -54,7 +54,7 @@ class TranslatableUtility extends DataExtension
 				'RFC1766' => i18n::convert_rfc1766($locale),
 				// the language 2 letter code (eg. EN)
 				'Language' => DBField::create_field('Varchar', 
-						strtoupper(i18n::get_lang_from_locale(i18n::get_lang_from_locale($locale)))),
+						strtoupper(i18n::get_lang_from_locale($locale))),
 				// the language as written in its native language
 				'Title'	=> DBField::create_field('Varchar', ucfirst(html_entity_decode(
 							i18n::get_language_name(i18n::get_lang_from_locale($locale), true),
