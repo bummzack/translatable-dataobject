@@ -97,7 +97,7 @@ Imagine you have a `TestimonialPage` that `has_many` testimonials and you're man
 
 #### The DataObject (Testimonial)
 
-Let's start with the `Testimonial` DataObject (**Note:** user `public` instead of `private` for the static members if you're still running SilverStripe 3.0.x):
+Let's start with the `Testimonial` DataObject (**Note:** use `public` instead of `private` for the static members if you're still running SilverStripe 3.0.x):
 
 ```php
 class Testimonial extends DataObject

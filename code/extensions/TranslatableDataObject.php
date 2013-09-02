@@ -109,8 +109,8 @@ class TranslatableDataObject extends DataExtension
 		
 		foreach($locales as $locale){
 			$langName = ucfirst(html_entity_decode(
-							i18n::get_language_name(i18n::get_lang_from_locale($locale), true),
-							ENT_NOQUOTES, 'UTF-8'));
+				i18n::get_language_name(i18n::get_lang_from_locale($locale), true),
+				ENT_NOQUOTES, 'UTF-8'));
 			
 			if(isset($ambiguity[$locale])){
 				$langName .= ' (' . $ambiguity[$locale] . ')';
@@ -354,7 +354,6 @@ class TranslatableDataObject extends DataExtension
 			return null;
 		}
 		self::$collectorLock[$class] = true;
-	
 	
 		// Get all DB Fields
 		$fields = array();
