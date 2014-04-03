@@ -62,7 +62,7 @@ class TranslatableUtility extends DataExtension
 				// linking mode (useful for css class)
 				'LinkingMode' => $currentLocale == $locale ? 'current' : 'link',
 				// link to the translation or the home-page if no translation exists for the current page
-				'Link' => $translation  ? $translation->Link() : ($homeTranslated ? $homeTranslated->Link() : '')
+				'Link' => $translation  ? $translation->AbsoluteLink() : ($homeTranslated ? $homeTranslated->Link() : '')
 			)));
 	
 		}

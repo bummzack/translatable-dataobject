@@ -51,6 +51,10 @@ class TranslatableDataObject extends DataExtension
 	public function updateCMSFields(FieldList $fields) {
 		parent::updateCMSFields($fields);
 		
+		if(!isset(self::$collectorCache[$this->owner->class])){
+			return;
+		}
+		
 		// remove all localized fields from the list (generated through scaffolding)
 		foreach (self::$collectorCache[$this->owner->class] as $translatableField => $type) {
 			$fields->removeByName($translatableField);
