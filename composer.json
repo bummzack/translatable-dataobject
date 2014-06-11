@@ -15,7 +15,7 @@
 	"require":{
 		"silverstripe/framework": ">=3.0",
 		"silverstripe/cms": ">=3.0",
-    	"silverstripe/translatable": "1.0.*@dev"
+    	"silverstripe/translatable": "*"
 	},
 	"support":{
 		"issues" : "https://github.com/bummzack/translatable-dataobject/issues"
