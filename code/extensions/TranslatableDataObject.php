@@ -117,9 +117,13 @@ class TranslatableDataObject extends DataExtension
 		}
 		
 		foreach($locales as $locale){
-			$langName = ucfirst(html_entity_decode(
-				i18n::get_language_name(i18n::get_lang_from_locale($locale), $showNativeFields),
-				ENT_NOQUOTES, 'UTF-8'));
+			$lang = i18n::get_language_name(i18n::get_lang_from_locale($locale), $showNativeFields);
+			if(!$lang){
+				// fallback if get_lang_name doesn't return anything for the language code
+				$lang = i18n::get_language_name($locale, $showNativeFields);
+			}
+			
+			$langName = ucfirst(html_entity_decode($lang, ENT_NOQUOTES, 'UTF-8'));
 			
 			if(isset($ambiguity[$locale])){
 				$langName .= ' (' . $ambiguity[$locale] . ')';
