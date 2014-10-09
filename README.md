@@ -18,8 +18,11 @@ Requirements
 
 Installation
 ------------
+Use [composer](https://getcomposer.org/):
 
-Clone/download this repository into a folder in your SilverStripe installation folder.
+    composer require bummzack/translatable-dataobject dev-master
+
+Alternatively clone/download this repository into a folder in your SilverStripe installation folder.
 
 
 Usage
@@ -228,6 +231,28 @@ public function getCMSFields(){
 
     return $fields;
 }
+```
+
+### Files and Images
+
+Usually you'll also want to translate some fields of the file class. Enabling translation is simple by adding the following to `mysite/_config.php`:
+
+```php
+// make Title and Content of all Files translatable
+File::add_extension("TranslatableDataObject('Title', 'Content')");
+```
+
+To edit the translations within the CMS there's a simple extension you can add to your files.
+
+```php
+File::add_extension('TranslatedFile');
+```
+
+This extension will generate a tab per language within the `Files` Section of the CMS. In addition it adds a helper method (`getUploadEditorFields`) to use when within a locale-context. You can use this to provide translated fields for editing files in a `UploadField`. Here's an example:
+
+```php
+$imageUpload = UploadField::create('Image');
+$imageUpload->setFileEditFields('getUploadEditorFields');
 ```
 
 ### Usage and templates

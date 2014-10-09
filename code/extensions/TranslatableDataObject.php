@@ -62,8 +62,8 @@ class TranslatableDataObject extends DataExtension
 		
 		// check if we're in a translation
 		if (Translatable::default_locale() != Translatable::get_current_locale()) {
-			$transformation = new TranslatableFormFieldTransformation($this->owner);
-
+			$transformation = TranslatableFormFieldTransformation::create($this->owner);
+			
 			// iterate through all localized fields
 			foreach (self::$collectorCache[$this->owner->class] as $translatableField => $type) {
 				
@@ -82,22 +82,27 @@ class TranslatableDataObject extends DataExtension
 	 * Example usage:
 	 * <code>
 	 *     public function getCMSFields(){
-	 *         $fields = new FieldList();
+	 *         $fields = FieldList::create();
 	 *         $fields->add($this->getTranslatableTabSet());
 	 *         return $fields;
 	 *     }
 	 * </code>
 	 * @param string $title the title of the tabset to return. Defaults to "Root"
+	 * @param bool $showNativeFields whether or not to show native tab labels (eg. Español instead of Spanish)
 	 * @return TabSet
 	 */
-	public function getTranslatableTabSet($title = 'Root'){
-		$set = new TabSet($title);
+	public function getTranslatableTabSet($title = 'Root', $showNativeFields = true){
+		$set = TabSet::create($title);
 		
 		// get target locales
 		$locales = self::get_target_locales();
 		
 		// get translated fields
-		$fieldNames = array_keys(self::$localizedFields[$this->owner->class]);
+		$fieldNames = self::get_localized_class_fields($this->owner->class);
+		
+		if(!$fieldNames){
+			user_error('No localized fields for the given object found', E_USER_WARNING);
+		}
 		
 		$ambiguity = array();
 		foreach($locales as $locale){
@@ -113,13 +118,13 @@ class TranslatableDataObject extends DataExtension
 		
 		foreach($locales as $locale){
 			$langName = ucfirst(html_entity_decode(
-				i18n::get_language_name(i18n::get_lang_from_locale($locale), true),
+				i18n::get_language_name(i18n::get_lang_from_locale($locale), $showNativeFields),
 				ENT_NOQUOTES, 'UTF-8'));
 			
 			if(isset($ambiguity[$locale])){
 				$langName .= ' (' . $ambiguity[$locale] . ')';
 			}
-			$tab = new Tab($locale, $langName);
+			$tab = Tab::create($locale, $langName);
 			
 			foreach ($fieldNames as $fieldName) {
 				$tab->push($this->getLocalizedFormField($fieldName, $locale));
@@ -150,14 +155,14 @@ class TranslatableDataObject extends DataExtension
 		switch ($typeClean) {
 			case 'Varchar':
 			case 'HTMLVarchar':
-				$field = new TextField($localizedFieldName, $baseName);
+				$field = TextField::create($localizedFieldName, $baseName);
 				break;
 			case 'Text':
-				$field = new TextareaField($localizedFieldName, $baseName);
+				$field = TextareaField::create($localizedFieldName, $baseName);
 				break;
 			case 'HTMLText':
 			default:
-				$field = new HtmlEditorField($localizedFieldName, $baseName);
+				$field = HtmlEditorField::create($localizedFieldName, $baseName);
 				break;
 		}
 		return $field;
@@ -256,6 +261,23 @@ class TranslatableDataObject extends DataExtension
 	protected function getLocale($field) {
 		$retVal = explode(TRANSLATABLE_COLUMN_SEPARATOR, $field);
 		return end($retVal);
+	}
+	
+	/**
+	 * Get an array with all localized fields for the given class
+	 * @param string $class the class name to get the fields for
+	 * @return array containing all the localized field names
+	 */
+	public static function get_localized_class_fields($class){
+		$fieldNames = null;
+		$ancestry = array_reverse(ClassInfo::ancestry($class));
+		foreach ($ancestry as $className){
+			if(isset(self::$localizedFields[$className])){
+				$fieldNames = array_keys(self::$localizedFields[$className]);
+				break;
+			}
+		}
+		return $fieldNames;
 	}
 	
 	/**

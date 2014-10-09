@@ -42,7 +42,7 @@ class TranslatableFormFieldTransformation extends FormTransformation {
 	}
 
 	protected function baseTransform($nonEditableField, $originalField, $fieldname) {
-		$nonEditableField_holder = new CompositeField($nonEditableField);
+		$nonEditableField_holder = CompositeField::create($nonEditableField);
 		$nonEditableField_holder->setName($fieldname.'_holder');
 		$nonEditableField_holder->addExtraClass('originallang_holder');
 		$nonEditableField->setValue($this->original->$fieldname);
