@@ -70,8 +70,9 @@ class TranslatableDataObject extends DataExtension
 				if (strpos($translatableField, Translatable::get_current_locale())) {
 					$basename = $this->getBasename($translatableField);
 					
-					$field = $this->getLocalizedFormField($basename, Translatable::default_locale());
-					$fields->replaceField($basename, $transformation->transformFormField($field));
+					if($field = $this->getLocalizedFormField($basename, Translatable::default_locale())){
+						$fields->replaceField($basename, $transformation->transformFormField($field));
+					}
 				}
 			} 
 		}
@@ -117,6 +118,9 @@ class TranslatableDataObject extends DataExtension
 		}
 		
 		foreach($locales as $locale){
+			if(!$this->canTranslate(null, $locale)){
+				continue;
+			}
 			$lang = i18n::get_language_name(i18n::get_lang_from_locale($locale), $showNativeFields);
 			if(!$lang){
 				// fallback if get_lang_name doesn't return anything for the language code
@@ -148,6 +152,11 @@ class TranslatableDataObject extends DataExtension
 	public function getLocalizedFormField($fieldName, $locale){
 		$baseName = $this->getBasename($fieldName);
 		$localizedFieldName = self::localized_field($fieldName, $locale);
+		
+		if(!$this->canTranslate(null, $locale)){
+			// if not allowed to translate, return the field as Readonly
+			return ReadonlyField::create($localizedFieldName, $baseName);
+		}
 		
 		$dbFields = array();
 		Config::inst()->get($this->owner->class, 'db', Config::EXCLUDE_EXTRA_SOURCES, $dbFields);
@@ -237,6 +246,65 @@ class TranslatableDataObject extends DataExtension
 		}
 		
 		return $this->owner->getField($fieldName);
+	}
+	
+	/**
+	 * Check whether or not the given member is allowed to edit the given locale
+	 * Caution: Does not consider the {@link canEdit()} permissions.
+	 * 
+	 * @param Member $member
+	 * @param string $locale
+	 * @return boolean
+	 */
+	public function canTranslate($member, $locale) 
+	{
+		if($locale && !i18n::validate_locale($locale)) {
+			throw new InvalidArgumentException(sprintf('Invalid locale "%s"', $locale));
+		}
+		
+		if(!$member || !(is_a($member, 'Member')) || is_numeric($member)) $member = Member::currentUser();
+
+		// check for locale
+		$allowedLocale = (
+			!is_array(Translatable::get_allowed_locales()) 
+			|| in_array($locale, Translatable::get_allowed_locales())
+		);
+
+		if(!$allowedLocale) return false;
+		
+		// By default, anyone who can edit a page can edit the default locale
+		if($locale == Translatable::default_locale()) return true;
+		
+		// check for generic translation permission
+		if(Permission::checkMember($member, 'TRANSLATE_ALL')) return true;
+		
+		// check for locale specific translate permission
+		if(!Permission::checkMember($member, 'TRANSLATE_' . $locale)) return false;
+		
+		return true;
+	}
+	
+	/**
+	 * On before write hook. 
+	 * Check if any translatable field has changed and if permissions are sufficient
+	 * @see DataExtension::onBeforeWrite()
+	 */
+	public function onBeforeWrite() 
+	{
+		if(!isset(self::$localizedFields[$this->ownerBaseClass])){
+			return;
+		}
+		
+		$fields = self::$localizedFields[$this->ownerBaseClass];
+		foreach($fields as $field => $localized){
+			foreach(self::get_target_locales() as $locale){
+				$fieldName = self::localized_field($field, $locale);
+				if($this->owner->isChanged($fieldName, 2) && !$this->canTranslate(null, $locale)){
+					throw new PermissionFailureException(
+						"You're not allowed to edit the locale '$locale' for this object");
+				}
+			}
+		}
 	}
 	
 	/**
