@@ -211,7 +211,8 @@ class TranslatableDataObject extends DataExtension
 	 * @param string $fieldName the name of the field without any locale extension. Eg. "Title"
 	 */
 	public function isLocalizedField($fieldName){
-		return isset(self::$localizedFields[$this->ownerBaseClass][$fieldName]);
+		$fields = self::get_localized_class_fields($this->ownerBaseClass);
+		return in_array($fieldName, $fields);
 	}
 	
 	/**
@@ -345,11 +346,15 @@ class TranslatableDataObject extends DataExtension
 		$ancestry = array_reverse(ClassInfo::ancestry($class));
 		foreach ($ancestry as $className){
 			if(isset(self::$localizedFields[$className])){
-				$fieldNames = array_keys(self::$localizedFields[$className]);
-				break;
+				if($fieldNames === null){
+					$fieldNames = array();
+				}
+				foreach (self::$localizedFields[$className] as $k => $v){
+					$fieldNames[] = $k;
+				}
 			}
 		}
-		return $fieldNames;
+		return array_unique($fieldNames);
 	}
 	
 	/**
