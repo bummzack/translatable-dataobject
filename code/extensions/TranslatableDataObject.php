@@ -187,8 +187,8 @@ class TranslatableDataObject extends DataExtension
 	 *
 	 * ex: $T(Description) in the locale it_IT returns $yourClass->getField('Description__it_IT');
 	 */
-	public function T($field, $strict = true) {
-		return $this->getLocalizedValue($field, $strict);
+	public function T($field, $strict = true, $parseShortCodes = false) {
+		return $this->getLocalizedValue($field, $strict, $parseShortCodes);
 	}
 	
 	/**
@@ -233,20 +233,17 @@ class TranslatableDataObject extends DataExtension
 	 * Get the localized value for a given field.
 	 * @param string $fieldName the name of the field without any locale extension. Eg. "Title"
 	 * @param boolean $strict if false, this will fallback to the master version of the field!
+	 * @param boolean $parseShortCodes whether or not the value should be parsed with the shortcode parser
 	 */
-	public function getLocalizedValue($fieldName, $strict = true){
+	public function getLocalizedValue($fieldName, $strict = true, $parseShortCodes = false){
 		$localizedField = $this->getLocalizedFieldName($fieldName);
 		
-		if($strict){
-			return $this->owner->getField($localizedField);
+		$value = $this->owner->getField($localizedField);
+		if(!$strict && !$value){
+			$value = $this->owner->getField($fieldName);
 		}
 		
-		// if not strict, check localized first and fallback to fieldname
-		if($value = $this->owner->getField($localizedField)){
-			return $value;
-		}
-		
-		return $this->owner->getField($fieldName);
+		return ($parseShortCodes && $value) ? ShortcodeParser::get_active()->parse($value) : $value;
 	}
 	
 	/**
