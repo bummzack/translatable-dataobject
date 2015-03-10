@@ -238,9 +238,9 @@ class TranslatableDataObject extends DataExtension
 	public function getLocalizedValue($fieldName, $strict = true, $parseShortCodes = false){
 		$localizedField = $this->getLocalizedFieldName($fieldName);
 		
-		$value = $this->owner->getField($localizedField);
+		$value = $this->owner->dbObject($localizedField);
 		if(!$strict && !$value){
-			$value = $this->owner->getField($fieldName);
+			$value = $this->owner->dbObject($fieldName);
 		}
 		
 		return ($parseShortCodes && $value) ? ShortcodeParser::get_active()->parse($value) : $value;
