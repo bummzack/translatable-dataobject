@@ -14,7 +14,36 @@ class TranslatableUtility extends DataExtension
 	
 		return $this->owner;
 	}
-	
+
+	/**
+	 * Helper method to get content languages from the live DB table.
+	 * Most of the code is borrowed from the Translatable::get_live_content_languages method.
+	 * This method operates on "SiteTree" and makes a distinction between Live and Stage.
+	 * @return array
+	 */
+	static function get_content_languages() {
+		$table = Versioned::current_stage() == 'Live' ? 'SiteTree_Live' : 'SiteTree';
+		$query = new SQLQuery("Distinct \"Locale\"","\"$table\"", '', '', '"Locale"');
+		$dbLangs = $query->execute()->column();
+		$langlist = array_merge((array)Translatable::default_locale(), (array)$dbLangs);
+		$returnMap = array();
+		$allCodes = array_merge(
+			Config::inst()->get('i18n', 'all_locales'),
+			Config::inst()->get('i18n', 'common_locales')
+		);
+		foreach ($langlist as $langCode) {
+			if($langCode && isset($allCodes[$langCode])) {
+				if(is_array($allCodes[$langCode])) {
+					$returnMap[$langCode] = $allCodes[$langCode]['name'];
+				} else {
+					$returnMap[$langCode] = $allCodes[$langCode];
+				}
+			}
+		}
+		return $returnMap;
+	}
+
+
 	/**
 	 * Get a set of content languages (for quick language navigation)
 	 * @example
@@ -30,8 +59,8 @@ class TranslatableUtility extends DataExtension
 	 * @return ArrayList|null
 	 */
 	public function Languages(){
-		$locales = Translatable::get_existing_content_languages();
-		
+		$locales = TranslatableUtility::get_content_languages();
+
 		// there's no need to show a navigation when there's less than 2 languages. So return null
 		if(!$locales || count($locales) < 2){
 			return null;
