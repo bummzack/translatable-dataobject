@@ -35,6 +35,16 @@ class TranslatableDataObject extends DataExtension
 	 * @see DataExtension::get_extra_config()
 	 */
 	public static function get_extra_config($class, $extension, $args) {
+		if(!self::is_translatable_installed()){
+			// remain silent during a test
+			if(SapphireTest::is_running_test()){
+				return null;
+			}
+			// raise an error otherwise
+			user_error('Translatable module is not installed but required.', E_USER_WARNING);
+			return;
+		}
+
 		if($args){
 			self::$arguments[$class] = $args;
 		}
@@ -42,6 +52,27 @@ class TranslatableDataObject extends DataExtension
 		return array (
 			'db' => self::collectDBFields($class)
 		);
+	}
+
+	/**
+	 * @private
+	 * Check if the translatable module is available
+	 */
+	private static function is_translatable_installed(){
+		if(!class_exists('Translatable')){
+			return false;
+		}
+
+		if(!SiteTree::has_extension('Translatable')){
+			return false;
+		}
+
+		// check if the SiteTree table exists. This might not be there when Tests are running
+		if(!DB::getConn()->hasTable('SiteTree')){
+			return false;
+		}
+
+		return true;
 	}
 	
 	/**
