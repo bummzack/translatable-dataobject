@@ -182,6 +182,7 @@ class TranslatableDataObject extends DataExtension
 	 */
 	public function getLocalizedFormField($fieldName, $locale){
 		$baseName = $this->getBasename($fieldName);
+		$fieldlabels = $this->owner->fieldLabels();
 		$localizedFieldName = self::localized_field($fieldName, $locale);
 		
 		if(!$this->canTranslate(null, $locale)){
@@ -196,17 +197,17 @@ class TranslatableDataObject extends DataExtension
 		$typeClean = (($p = strpos($type, '(')) !== false) ? substr($type, 0, $p) : $type;
 		$field = null;
 		
-		switch ($typeClean) {
-			case 'Varchar':
-			case 'HTMLVarchar':
-				$field = TextField::create($localizedFieldName, $baseName);
+		switch (strtolower($typeClean)) {
+			case 'varchar':
+			case 'htmlvarchar':
+				$field = TextField::create($localizedFieldName, (isset($fieldlabels[$baseName])?$fieldlabels[$baseName]:$baseName));
 				break;
-			case 'Text':
-				$field = TextareaField::create($localizedFieldName, $baseName);
+			case 'text':
+				$field = TextareaField::create($localizedFieldName, (isset($fieldlabels[$baseName])?$fieldlabels[$baseName]:$baseName));
 				break;
-			case 'HTMLText':
+			case 'htmltext':
 			default:
-				$field = HtmlEditorField::create($localizedFieldName, $baseName);
+				$field = HtmlEditorField::create($localizedFieldName, (isset($fieldlabels[$baseName])?$fieldlabels[$baseName]:$baseName));
 				break;
 		}
 		return $field;
