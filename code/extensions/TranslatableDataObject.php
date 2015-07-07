@@ -200,14 +200,14 @@ class TranslatableDataObject extends DataExtension
 		switch (strtolower($typeClean)) {
 			case 'varchar':
 			case 'htmlvarchar':
-				$field = TextField::create($localizedFieldName, (isset($fieldlabels[$baseName])?$fieldlabels[$baseName]:$baseName));
+				$field = TextField::create($localizedFieldName, (isset($fieldlabels[$localizedFieldName])?$fieldlabels[$localizedFieldName]:$baseName));
 				break;
 			case 'text':
-				$field = TextareaField::create($localizedFieldName, (isset($fieldlabels[$baseName])?$fieldlabels[$baseName]:$baseName));
+				$field = TextareaField::create($localizedFieldName, (isset($fieldlabels[$localizedFieldName])?$fieldlabels[$localizedFieldName]:$baseName));
 				break;
 			case 'htmltext':
 			default:
-				$field = HtmlEditorField::create($localizedFieldName, (isset($fieldlabels[$baseName])?$fieldlabels[$baseName]:$baseName));
+				$field = HtmlEditorField::create($localizedFieldName, (isset($fieldlabels[$localizedFieldName])?$fieldlabels[$localizedFieldName]:$baseName));
 				break;
 		}
 		return $field;
