@@ -8,16 +8,20 @@
 	"authors":[
 		{
 			"name": "Roman Schmid",
-			"homepage": "http://www.bummzack.ch",
+			"homepage": "https://bummzack.ch",
 			"role" : "lead developer"
 		}
 	],
 	"require":{
-		"silverstripe/framework": ">=3.0",
-		"silverstripe/cms": ">=3.0",
+		"silverstripe/framework": "~3.0",
     	"silverstripe/translatable": "*"
 	},
 	"support":{
 		"issues" : "https://github.com/bummzack/translatable-dataobject/issues"
+	},
+	"extra": {
+	  "branch-alias": {
+		"dev-master": "1.x-dev"
+	  }
 	}
 }

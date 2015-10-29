@@ -1,7 +1,7 @@
 translatable-dataobject
 ============
 
-An extension for SilverStripe 3.0 or newer that adds translations of fields to DataObjects.
+An extension for SilverStripe 3.0 – 3.2 that adds translations of fields to DataObjects.
 Instead of creating new rows for translations, translations are added as columns. This way, there's only one
 DataObject instance which is consistent across all localizations, but which has localized fields.
 
@@ -12,7 +12,7 @@ Credit goes to Uncle Cheese which inspired my with his [TranslatableDataObject](
 Requirements
 ------------
 
- - [SilverStripe 3.0 or newer](http://www.silverstripe.org/stable-download/)
+ - [SilverStripe 3.0 or newer](https://docs.silverstripe.org/en/3.2/getting_started/composer/)
  - [translatable module](https://github.com/silverstripe/silverstripe-translatable)
 
 
@@ -20,7 +20,7 @@ Installation
 ------------
 Use [composer](https://getcomposer.org/):
 
-    composer require bummzack/translatable-dataobject dev-master
+    composer require bummzack/translatable-dataobject
 
 Alternatively clone/download this repository into a folder in your SilverStripe installation folder.
 
@@ -57,12 +57,23 @@ Using this setup requires you to run `dev/build` whenever you add a new translat
 To make a DataObject translatable, a single line in `mysite/_config.php` is sufficient:
 
 ```php
-// SilverStripe 3.1 syntax
+// SilverStripe 3.1 and 3.2 syntax
 MyDataObject::add_extension('TranslatableDataObject');
 
 // SilverStripe 3.0 syntax
 Object::add_extension('MyDataObject', 'TranslatableDataObject');
 ```
+
+In SilverStripe 3.1 and above, you might prefer adding the extension via YAML config file, like this:
+
+```yml
+# in your mysite/_config/config.yml
+
+MyDataObject:
+  extensions:
+    - TranslatableDataObject
+```
+
 
 Run `dev/build` afterwards, so that the additional DB fields can be created.
 By default, all `Varchar`, `Text` and `HTMLText` fields will be translated, while all other fields remain untouched.
@@ -77,11 +88,25 @@ If you would like to specify the fields to localize manually, there's an extende
 
 ```php
 // only translate the 'Title' and 'Content' field of "MyDataObject"
-// SilverStripe 3.1 syntax
+// SilverStripe 3.1 and 3.2 syntax
 MyDataObject::add_extension("TranslatableDataObject('Title','Content')");
 
 // SilverStripe 3.0 syntax
 Object::add_extension('MyDataObject', "TranslatableDataObject('Title','Content')");
+```
+
+And the same as YAML configuration:
+
+```yml
+# in your mysite/_config/config.yml
+# Example with parameters
+
+MyDataObject:
+  extensions:
+    - TranslatableDataObject
+  translatable_fields:
+    - Content
+    - Title    
 ```
 
 Alternatively, you can also set the fields to translate in a static field on your DataObject. So inside your `MyDataObject` 

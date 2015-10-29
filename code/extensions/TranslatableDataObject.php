@@ -274,8 +274,8 @@ class TranslatableDataObject extends DataExtension
 		if(!$strict && !$value){
 			$value = $this->owner->dbObject($fieldName);
 		}
-		
-		return ($parseShortCodes && $value) ? ShortcodeParser::get_active()->parse($value) : $value;
+
+		return ($parseShortCodes && $value) ? ShortcodeParser::get_active()->parse($value->getValue()) : $value;
 	}
 	
 	/**
