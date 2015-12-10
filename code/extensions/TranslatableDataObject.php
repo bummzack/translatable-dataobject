@@ -67,11 +67,6 @@ class TranslatableDataObject extends DataExtension
 			return false;
 		}
 
-		// check if the SiteTree table exists. This might not be there when Tests are running
-		if(!DB::getConn()->hasTable('SiteTree')){
-			return false;
-		}
-
 		return true;
 	}
 	
