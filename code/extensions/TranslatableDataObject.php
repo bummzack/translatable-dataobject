@@ -275,7 +275,7 @@ class TranslatableDataObject extends DataExtension
         $localizedField = $this->getLocalizedFieldName($fieldName);
         
         $value = $this->owner->dbObject($localizedField);
-        if (!$strict && $value == '') {
+        if (!$strict && !$value->exists()) {
             $value = $this->owner->dbObject($fieldName);
         }
 
