@@ -3,7 +3,7 @@
  * Translatable extension, inspired by Uncle Cheese's implementation
  * https://github.com/unclecheese/TranslatableDataObject but tailored to be used
  * with the translatable SilverStripe extension
- * 
+ *
  * @author bummzack
  */
 class TranslatableDataObject extends DataExtension
@@ -14,25 +14,29 @@ class TranslatableDataObject extends DataExtension
         'Text',
         'HTMLText'
     );
-    
+
     // configuration arguments for each class
+    /**
+     * @var array
+     */
     protected static $arguments = array();
-    
+
     // locales to build
     protected static $locales = null;
-    
+
     // cache of the collector calls
     protected static $collectorCache = array();
-    
+
     // cache of classes and their localized fields
     protected static $localizedFields = array();
-    
+
     // lock to prevent endless loop
     protected static $collectorLock = array();
-    
+
     /**
      * Use table information and locales to dynamically build required table fields
      * @see DataExtension::get_extra_config()
+     * @inheritdoc
      */
     public static function get_extra_config($class, $extension, $args)
     {
@@ -43,13 +47,13 @@ class TranslatableDataObject extends DataExtension
             }
             // raise an error otherwise
             user_error('Translatable module is not installed but required.', E_USER_WARNING);
-            return;
+            return null;
         }
 
         if ($args) {
             self::$arguments[$class] = $args;
         }
-        
+
         return array(
             'db' => self::collectDBFields($class)
         );
@@ -58,46 +62,41 @@ class TranslatableDataObject extends DataExtension
     /**
      * @private
      * Check if the translatable module is available
+     * @return bool whether or not the Translatable module is installed
      */
     private static function is_translatable_installed()
     {
-        if (!class_exists('Translatable')) {
-            return false;
-        }
-
-        if (!SiteTree::has_extension('Translatable')) {
-            return false;
-        }
-
-        return true;
+        return class_exists('Translatable') && SiteTree::has_extension('Translatable');
     }
-    
+
     /**
-     * Alter the CMS Fields in order to automatically present the 
+     * Alter the CMS Fields in order to automatically present the
      * correct ones based on current language.
+     * @inheritdoc
      */
     public function updateCMSFields(FieldList $fields)
     {
         parent::updateCMSFields($fields);
-        
+
         if (!isset(self::$collectorCache[$this->owner->class])) {
             return;
         }
-        
+
         // remove all localized fields from the list (generated through scaffolding)
         foreach (self::$collectorCache[$this->owner->class] as $translatableField => $type) {
             $fields->removeByName($translatableField);
         }
-        
+
         // check if we're in a translation
         if (Translatable::default_locale() != Translatable::get_current_locale()) {
+            /** @var TranslatableFormFieldTransformation $transformation */
             $transformation = TranslatableFormFieldTransformation::create($this->owner);
-            
+
             // iterate through all localized fields
             foreach (self::$collectorCache[$this->owner->class] as $translatableField => $type) {
                 if (strpos($translatableField, Translatable::get_current_locale())) {
                     $basename = $this->getBasename($translatableField);
-                    
+
                     if ($field = $this->getLocalizedFormField($basename, Translatable::default_locale())) {
                         $fields->replaceField($basename, $transformation->transformFormField($field));
                     }
@@ -105,7 +104,7 @@ class TranslatableDataObject extends DataExtension
             }
         }
     }
-    
+
     /**
      * Get a tabset with a tab for every language containing the translatable fields.
      * Example usage:
@@ -122,18 +121,19 @@ class TranslatableDataObject extends DataExtension
      */
     public function getTranslatableTabSet($title = 'Root', $showNativeFields = true)
     {
+        /** @var TabSet $set */
         $set = TabSet::create($title);
-        
+
         // get target locales
         $locales = self::get_target_locales();
-        
+
         // get translated fields
         $fieldNames = self::get_localized_class_fields($this->owner->class);
-        
-        if (!$fieldNames) {
+
+        if (empty($fieldNames)) {
             user_error('No localized fields for the given object found', E_USER_WARNING);
         }
-        
+
         $ambiguity = array();
         foreach ($locales as $locale) {
             $langCode = i18n::get_lang_from_locale($locale);
@@ -145,7 +145,7 @@ class TranslatableDataObject extends DataExtension
                 }
             }
         }
-        
+
         foreach ($locales as $locale) {
             if (!$this->canTranslate(null, $locale)) {
                 continue;
@@ -155,23 +155,24 @@ class TranslatableDataObject extends DataExtension
                 // fallback if get_lang_name doesn't return anything for the language code
                 $lang = i18n::get_language_name($locale, $showNativeFields);
             }
-            
+
             $langName = ucfirst(html_entity_decode($lang, ENT_NOQUOTES, 'UTF-8'));
-            
+
             if (isset($ambiguity[$locale])) {
                 $langName .= ' (' . $ambiguity[$locale] . ')';
             }
+            /** @var Tab $tab */
             $tab = Tab::create($locale, $langName);
-            
+
             foreach ($fieldNames as $fieldName) {
                 $tab->push($this->getLocalizedFormField($fieldName, $locale));
             }
-            
+
             $set->push($tab);
         }
         return $set;
     }
-    
+
     /**
      * Get a form field for the given field name
      * @param string $fieldName
@@ -181,34 +182,35 @@ class TranslatableDataObject extends DataExtension
     public function getLocalizedFormField($fieldName, $locale)
     {
         $baseName = $this->getBasename($fieldName);
-        $fieldlabels = $this->owner->fieldLabels();
+        $fieldLabels = $this->owner->fieldLabels();
         $localizedFieldName = self::localized_field($fieldName, $locale);
-        
+
         if (!$this->canTranslate(null, $locale)) {
             // if not allowed to translate, return the field as Readonly
             return ReadonlyField::create($localizedFieldName, $baseName);
         }
-        
+
         $dbFields = array();
         Config::inst()->get($this->owner->class, 'db', Config::EXCLUDE_EXTRA_SOURCES, $dbFields);
-        
+
         $type = isset($dbFields[$baseName]) ? $dbFields[$baseName] : '';
         $typeClean = (($p = strpos($type, '(')) !== false) ? substr($type, 0, $p) : $type;
-        $field = null;
-        
+        $fieldLabel = isset($fieldLabels[$baseName]) ? $fieldLabels[$baseName] : $baseName;
+
         switch (strtolower($typeClean)) {
             case 'varchar':
             case 'htmlvarchar':
-                $field = TextField::create($localizedFieldName, (isset($fieldlabels[$baseName])?$fieldlabels[$baseName]:$baseName));
+                $field = TextField::create($localizedFieldName, $fieldLabel);
                 break;
             case 'text':
-                $field = TextareaField::create($localizedFieldName, (isset($fieldlabels[$baseName])?$fieldlabels[$baseName]:$baseName));
+                $field = TextareaField::create($localizedFieldName, $fieldLabel);
                 break;
             case 'htmltext':
             default:
-                $field = HtmlEditorField::create($localizedFieldName, (isset($fieldlabels[$baseName])?$fieldlabels[$baseName]:$baseName));
+                $field = HtmlEditorField::create($localizedFieldName, $fieldLabel);
                 break;
         }
+
         return $field;
     }
 
@@ -217,63 +219,70 @@ class TranslatableDataObject extends DataExtension
      * Does the same as @see getLocalizedValue
      *
      * ex: $T(Description) in the locale it_IT returns $yourClass->getField('Description__it_IT');
+     * @param string $field the name of the field without any locale extension. Eg. "Title"
+     * @param bool $strict if false, this will fallback to the master version of the field!
+     * @param bool $parseShortCodes whether or not the value should be parsed with the shortcode parser
+     * @return string|DBField
      */
     public function T($field, $strict = true, $parseShortCodes = false)
     {
         return $this->getLocalizedValue($field, $strict, $parseShortCodes);
     }
-    
+
     /**
      * Present translatable form fields in a more readable fashion
      * @see DataExtension::updateFieldLabels()
+     * @inheritdoc
      */
     public function updateFieldLabels(&$labels)
     {
         parent::updateFieldLabels($labels);
-        
+
         $statics = self::$collectorCache[$this->ownerBaseClass];
         foreach ($statics as $field => $type) {
             $parts = explode(TRANSLATABLE_COLUMN_SEPARATOR, $field);
             $labels[$field] = FormField::name_to_label($parts[0]) . ' (' . $parts[1] . ')';
         }
     }
-    
-    
+
     /**
      * Check if the given field name is a localized field
      * @param string $fieldName the name of the field without any locale extension. Eg. "Title"
+     * @return bool whether or not the given field is localized
      */
     public function isLocalizedField($fieldName)
     {
         $fields = self::get_localized_class_fields($this->ownerBaseClass);
         return in_array($fieldName, $fields);
     }
-    
+
     /**
      * Get the field name in the current reading locale
      * @param string $fieldName the name of the field without any locale extension. Eg. "Title"
-     * @return void|string
+     * @return null|string
      */
     public function getLocalizedFieldName($fieldName)
     {
         if (!$this->isLocalizedField($fieldName)) {
             trigger_error("Field '$fieldName' is not a localized field", E_USER_ERROR);
-            return;
+            return null;
         }
-        
+
         return self::localized_field($fieldName);
     }
-    
+
     /**
      * Get the localized value for a given field.
      * @param string $fieldName the name of the field without any locale extension. Eg. "Title"
      * @param boolean $strict if false, this will fallback to the master version of the field!
      * @param boolean $parseShortCodes whether or not the value should be parsed with the shortcode parser
+     * @return string|DBField
      */
     public function getLocalizedValue($fieldName, $strict = true, $parseShortCodes = false)
     {
         $localizedField = $this->getLocalizedFieldName($fieldName);
-        
+
+        /** @var DBField $value */
         $value = $this->owner->dbObject($localizedField);
         if (!$strict && !$value->exists()) {
             $value = $this->owner->dbObject($fieldName);
@@ -281,12 +290,12 @@ class TranslatableDataObject extends DataExtension
 
         return ($parseShortCodes && $value) ? ShortcodeParser::get_active()->parse($value->getValue()) : $value;
     }
-    
+
     /**
      * Check whether or not the given member is allowed to edit the given locale
      * Caution: Does not consider the {@link canEdit()} permissions.
-     * 
-     * @param Member $member
+     *
+     * @param Member|null $member
      * @param string $locale
      * @return boolean
      */
@@ -295,7 +304,7 @@ class TranslatableDataObject extends DataExtension
         if ($locale && !i18n::validate_locale($locale)) {
             throw new InvalidArgumentException(sprintf('Invalid locale "%s"', $locale));
         }
-        
+
         if (!$member || !(is_a($member, 'Member')) || is_numeric($member)) {
             $member = Member::currentUser();
         }
@@ -309,27 +318,27 @@ class TranslatableDataObject extends DataExtension
         if (!$allowedLocale) {
             return false;
         }
-        
+
         // By default, anyone who can edit a page can edit the default locale
         if ($locale == Translatable::default_locale()) {
             return true;
         }
-        
+
         // check for generic translation permission
         if (Permission::checkMember($member, 'TRANSLATE_ALL')) {
             return true;
         }
-        
+
         // check for locale specific translate permission
         if (!Permission::checkMember($member, 'TRANSLATE_' . $locale)) {
             return false;
         }
-        
+
         return true;
     }
-    
+
     /**
-     * On before write hook. 
+     * On before write hook.
      * Check if any translatable field has changed and if permissions are sufficient
      * @see DataExtension::onBeforeWrite()
      */
@@ -338,7 +347,7 @@ class TranslatableDataObject extends DataExtension
         if (!isset(self::$localizedFields[$this->ownerBaseClass])) {
             return;
         }
-        
+
         $fields = self::$localizedFields[$this->ownerBaseClass];
         foreach ($fields as $field => $localized) {
             foreach (self::get_target_locales() as $locale) {
@@ -350,7 +359,7 @@ class TranslatableDataObject extends DataExtension
             }
         }
     }
-    
+
     /**
      * Given a translatable field name, pull out the locale and
      * return the raw field name.
@@ -365,7 +374,7 @@ class TranslatableDataObject extends DataExtension
         $retVal = explode(TRANSLATABLE_COLUMN_SEPARATOR, $field);
         return reset($retVal);
     }
-    
+
     /**
      * Given a translatable field name, pull out the raw field name and
      * return the locale
@@ -380,7 +389,7 @@ class TranslatableDataObject extends DataExtension
         $retVal = explode(TRANSLATABLE_COLUMN_SEPARATOR, $field);
         return end($retVal);
     }
-    
+
     /**
      * Get an array with all localized fields for the given class
      * @param string $class the class name to get the fields for
@@ -402,18 +411,18 @@ class TranslatableDataObject extends DataExtension
         }
         return array_unique($fieldNames);
     }
-    
+
     /**
      * Given a field name and a locale name, create a composite string that represents
      * the field in the database.
      *
-     * @param string $field The field name
-     * @param string $locale The locale name
+     * @param string $field The field name or null to use the current locale
+     * @param string|null $locale The locale name or null
      * @return string
      */
     public static function localized_field($field, $locale = null)
     {
-        if (!$locale) {
+        if ($locale === null) {
             $locale = Translatable::get_current_locale();
         }
         if ($locale == Translatable::default_locale()) {
@@ -421,20 +430,20 @@ class TranslatableDataObject extends DataExtension
         }
         return $field . TRANSLATABLE_COLUMN_SEPARATOR . $locale;
     }
-    
+
     /**
-     * Set the default field-types that should be translated. 
+     * Set the default field-types that should be translated.
      * Must be an array of valid field types. These types only come into effect when the
      * fields that should be translatet *aren't* explicitly defined.
-     * 
+     *
      * @example
      * <code>
      * // create translations for all fields of type "Varchar" and "HTMLText".
      * TranslatableDataObject::set_default_fieldtypes(array('Varchar', 'HTMLText'));
      * </code>
-     * 
+     *
      * Defaults to: array('Varchar', 'Text', 'HTMLText')
-     * 
+     *
      * @param array $types the field-types that should be translated if not explicitly set
      */
     public static function set_default_fieldtypes($types)
@@ -443,9 +452,9 @@ class TranslatableDataObject extends DataExtension
             self::$default_field_types = $types;
         }
     }
-    
+
     /**
-     * Get the default field-types 
+     * Get the default field-types
      * @see TranslatableDataObject::set_default_fieldtypes
      * @return array
      */
@@ -453,19 +462,19 @@ class TranslatableDataObject extends DataExtension
     {
         return self::$default_field_types;
     }
-    
+
     /**
      * Explicitly set the locales that should be translated.
-     * 
+     *
      * @example
      * <code>
      * // Set locales to en_US and fr_FR
      * TranslatableDataObject::set_locales(array('en_US', 'fr_FR'));
      * </code>
-     * 
-     * Defaults to `null`. In this case, locales are being taken from 
+     *
+     * Defaults to `null`. In this case, locales are being taken from
      * Translatable::get_allowed_locales or Translatable::get_existing_content_languages
-     * 
+     *
      * @param array $locales an array of locales or null
      */
     public static function set_locales($locales)
@@ -485,48 +494,49 @@ class TranslatableDataObject extends DataExtension
             self::$locales = null;
         }
     }
-    
+
     /**
      * Get the list of locales that should be translated.
-     * @return array array of locales if they have been defined using set_locales, null otherwise
+     * @return array|null array of locales if they have been defined using set_locales, null otherwise
      */
     public static function get_locales()
     {
         return self::$locales;
     }
-    
+
     /**
      * Collect all additional database fields of the given class.
      * @param string $class
+     * @return array fieldnames that should be added
      */
     protected static function collectDBFields($class)
     {
         if (isset(self::$collectorCache[$class])) {
             return self::$collectorCache[$class];
         }
-    
+
         if (isset(self::$collectorLock[$class]) && self::$collectorLock[$class]) {
             return null;
         }
         self::$collectorLock[$class] = true;
-    
+
         // Get all DB Fields
         $fields = array();
         Config::inst()->get($class, 'db', Config::EXCLUDE_EXTRA_SOURCES, $fields);
-    
+
         // Get all arguments
         $arguments = self::get_arguments($class);
-    
+
         $locales = self::get_target_locales();
-    
+
         // remove the default locale
         if (($index = array_search(Translatable::default_locale(), $locales)) !== false) {
             array_splice($locales, $index, 1);
         }
-    
+
         // fields that should be translated
         $fieldsToTranslate = array();
-    
+
         // validate the arguments
         if ($arguments) {
             foreach ($arguments as $field) {
@@ -544,8 +554,8 @@ class TranslatableDataObject extends DataExtension
                 }
             }
         }
-    
-    
+
+
         // gather all the DB fields
         $additionalFields = array();
         self::$localizedFields[$class] = array();
@@ -557,12 +567,12 @@ class TranslatableDataObject extends DataExtension
                 $additionalFields[$localizedName] = $fields[$field];
             }
         }
-    
+
         self::$collectorCache[$class] = $additionalFields;
         self::$collectorLock[$class] = false;
         return $additionalFields;
     }
-    
+
     /**
      * Get the locales that should be translated
      * @return array containing the locales to use
@@ -580,11 +590,11 @@ class TranslatableDataObject extends DataExtension
             return array_keys(Translatable::get_existing_content_languages());
         }
     }
-    
+
     /**
      * Get the custom arguments for a given class. Either directly from how the extension
      * was defined, or lookup the 'translatable_fields' static variable
-     * 
+     *
      * @param string $class
      * @return array|null
      */
@@ -599,7 +609,7 @@ class TranslatableDataObject extends DataExtension
                 }
             }
         }
-        
+
         return null;
     }
 }
