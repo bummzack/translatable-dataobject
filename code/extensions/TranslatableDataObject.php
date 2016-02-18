@@ -339,7 +339,7 @@ class TranslatableDataObject extends DataExtension
         }
 
         // check for locale specific translate permission
-        return Permission::checkMember($member, 'TRANSLATE_' . $locale);
+        return Permission::checkMember($member, 'TRANSLATE_' . $locale) == true;
     }
 
     /**
@@ -462,7 +462,7 @@ class TranslatableDataObject extends DataExtension
     /**
      * Get the default field-types
      * @see TranslatableDataObject::set_default_fieldtypes
-     * @return array
+     * @return mixed
      * @deprecated 2.0 use the config system instead. Eg. TranslatableDataObject::config()->default_field_types
      */
     public static function get_default_fieldtypes()
@@ -556,7 +556,9 @@ class TranslatableDataObject extends DataExtension
             // check for the given default field types and add all fields of that type
             foreach ($fields as $field => $type) {
                 $typeClean = (($p = strpos($type, '(')) !== false) ? substr($type, 0, $p) : $type;
-                if (in_array($typeClean, self::$default_field_types)) {
+                $defaultFields = self::config()->default_field_types;
+
+                if (is_array($defaultFields) && in_array($typeClean, $defaultFields)) {
                     $fieldsToTranslate[] = $field;
                 }
             }
@@ -587,15 +589,15 @@ class TranslatableDataObject extends DataExtension
     protected static function get_target_locales()
     {
         // if locales are explicitly set, use these
-        if (is_array(self::get_locales())) {
-            return self::get_locales();
+        if (is_array(self::config()->locales)) {
+            return (array)self::config()->locales;
             // otherwise check the allowed locales. If these have been set, use these
-        } else if (Translatable::get_allowed_locales() !== null) {
-            return Translatable::get_allowed_locales();
-        } else {
-            // last resort is to take the existing content languages
-            return array_keys(Translatable::get_existing_content_languages());
+        } else if (is_array(Translatable::get_allowed_locales())) {
+            return (array)Translatable::get_allowed_locales();
         }
+
+        // last resort is to take the existing content languages
+        return array_keys(Translatable::get_existing_content_languages());
     }
 
     /**

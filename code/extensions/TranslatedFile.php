@@ -31,7 +31,7 @@ class TranslatedFile extends DataExtension
         } else {
             $fieldName = 'Translate' . $name;
             // for all other languages, access the files in read-only
-            if ($sortField && $collection instanceof SS_Sortable){
+            if (!empty($sortField) && $collection instanceof SS_Sortable){
                 /** @var UploadField $uploadField */
                 $uploadField = UploadField::create($fieldName, $title, $collection->sort($sortField));
             } else {
