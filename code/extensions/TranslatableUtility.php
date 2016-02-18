@@ -12,7 +12,7 @@ class TranslatableUtility extends DataExtension
                 return $master;
             }
         }
-    
+
         return $this->owner;
     }
 
@@ -25,8 +25,17 @@ class TranslatableUtility extends DataExtension
     public static function get_content_languages()
     {
         $table = Versioned::current_stage() == 'Live' ? 'SiteTree_Live' : 'SiteTree';
-        $query = new SQLQuery("Distinct \"Locale\"", "\"$table\"", '', '', '"Locale"');
+
+        if(class_exists('SQLSelect')){
+            $query = new SQLSelect("Distinct \"Locale\"", "\"$table\"");
+        } else {
+            // SS 3.1 compat
+            $query = new SQLQuery("Distinct \"Locale\"", array("\"$table\""));
+        }
+
+        $query = $query->setGroupBy('"Locale"');
         $dbLangs = $query->execute()->column();
+
         $langlist = array_merge((array)Translatable::default_locale(), (array)$dbLangs);
         $returnMap = array();
         $allCodes = array_merge(
@@ -57,7 +66,7 @@ class TranslatableUtility extends DataExtension
      * 		<% end_loop %>
      * </ul>
      * </code>
-     * 
+     *
      * @return ArrayList|null
      */
     public function Languages()
@@ -65,20 +74,23 @@ class TranslatableUtility extends DataExtension
         $locales = TranslatableUtility::get_content_languages();
 
         // there's no need to show a navigation when there's less than 2 languages. So return null
-        if (!$locales || count($locales) < 2) {
+        if (count($locales) < 2) {
             return null;
         }
-        
+
         $currentLocale = Translatable::get_current_locale();
         $homeTranslated = null;
         if ($home = SiteTree::get_by_link('home')) {
+            /** @var SiteTree $homeTranslated */
             $homeTranslated = $home->getTranslation($currentLocale);
         }
+        /** @var ArrayList $langSet */
         $langSet = ArrayList::create();
         foreach ($locales as $locale => $name) {
             Translatable::set_current_locale($locale);
+            /** @var SiteTree $translation */
             $translation = $this->owner->hasTranslation($locale) ? $this->owner->getTranslation($locale) : null;
-    
+
             $langSet->push(new ArrayData(array(
                 // the locale (eg. en_US)
                 'Locale' => $locale,
@@ -94,10 +106,10 @@ class TranslatableUtility extends DataExtension
                 // linking mode (useful for css class)
                 'LinkingMode' => $currentLocale == $locale ? 'current' : 'link',
                 // link to the translation or the home-page if no translation exists for the current page
-                'Link' => $translation  ? $translation->AbsoluteLink() : ($homeTranslated ? $homeTranslated->Link() : '')
+                'Link' => $translation ? $translation->AbsoluteLink() : ($homeTranslated ? $homeTranslated->Link() : '')
             )));
         }
-    
+
         Translatable::set_current_locale($currentLocale);
         i18n::set_locale($currentLocale);
         return $langSet;

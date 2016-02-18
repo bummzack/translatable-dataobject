@@ -9,20 +9,20 @@
 class TranslatableDataObject extends DataExtension
 {
     // Field types that should be translated if no specific fields are given
-    protected static $default_field_types = array(
+    private static $default_field_types = array(
         'Varchar',
         'Text',
         'HTMLText'
     );
+
+    // locales to build
+    private static $locales = null;
 
     // configuration arguments for each class
     /**
      * @var array
      */
     protected static $arguments = array();
-
-    // locales to build
-    protected static $locales = null;
 
     // cache of the collector calls
     protected static $collectorCache = array();
@@ -32,6 +32,15 @@ class TranslatableDataObject extends DataExtension
 
     // lock to prevent endless loop
     protected static $collectorLock = array();
+
+    /**
+     * Accessor to the config variables
+     * @return Config_ForClass
+     */
+    public static function config()
+    {
+        return Config::inst()->forClass('TranslatableDataObject');
+    }
 
     /**
      * Use table information and locales to dynamically build required table fields
@@ -184,10 +193,11 @@ class TranslatableDataObject extends DataExtension
         $baseName = $this->getBasename($fieldName);
         $fieldLabels = $this->owner->fieldLabels();
         $localizedFieldName = self::localized_field($fieldName, $locale);
+        $fieldLabel = isset($fieldLabels[$baseName]) ? $fieldLabels[$baseName] : $baseName;
 
         if (!$this->canTranslate(null, $locale)) {
             // if not allowed to translate, return the field as Readonly
-            return ReadonlyField::create($localizedFieldName, $baseName);
+            return ReadonlyField::create($localizedFieldName, $fieldLabel);
         }
 
         $dbFields = array();
@@ -195,7 +205,6 @@ class TranslatableDataObject extends DataExtension
 
         $type = isset($dbFields[$baseName]) ? $dbFields[$baseName] : '';
         $typeClean = (($p = strpos($type, '(')) !== false) ? substr($type, 0, $p) : $type;
-        $fieldLabel = isset($fieldLabels[$baseName]) ? $fieldLabels[$baseName] : $baseName;
 
         switch (strtolower($typeClean)) {
             case 'varchar':
@@ -330,11 +339,7 @@ class TranslatableDataObject extends DataExtension
         }
 
         // check for locale specific translate permission
-        if (!Permission::checkMember($member, 'TRANSLATE_' . $locale)) {
-            return false;
-        }
-
-        return true;
+        return Permission::checkMember($member, 'TRANSLATE_' . $locale);
     }
 
     /**
@@ -445,11 +450,12 @@ class TranslatableDataObject extends DataExtension
      * Defaults to: array('Varchar', 'Text', 'HTMLText')
      *
      * @param array $types the field-types that should be translated if not explicitly set
+     * @deprecated 2.0 use YAML config default_field_types instead
      */
     public static function set_default_fieldtypes($types)
     {
         if (is_array($types)) {
-            self::$default_field_types = $types;
+            Config::inst()->update('TranslatableDataObject', 'default_field_types', $types);
         }
     }
 
@@ -457,10 +463,11 @@ class TranslatableDataObject extends DataExtension
      * Get the default field-types
      * @see TranslatableDataObject::set_default_fieldtypes
      * @return array
+     * @deprecated 2.0 use the config system instead. Eg. TranslatableDataObject::config()->default_field_types
      */
     public static function get_default_fieldtypes()
     {
-        return self::$default_field_types;
+        return self::config()->get('default_field_types');
     }
 
     /**
@@ -475,33 +482,33 @@ class TranslatableDataObject extends DataExtension
      * Defaults to `null`. In this case, locales are being taken from
      * Translatable::get_allowed_locales or Translatable::get_existing_content_languages
      *
-     * @param array $locales an array of locales or null
+     * @param array|null $locales an array of locales or null
+     * @deprecated 2.0 use YAML config `locales` instead
      */
     public static function set_locales($locales)
     {
         if (is_array($locales)) {
+            $list = array();
             foreach ($locales as $locale) {
                 if (i18n::validate_locale($locale)) {
-                    if (!is_array(self::$locales)) {
-                        self::$locales = array();
-                    }
-                    if (array_search($locale, self::$locales) === false) {
-                        self::$locales[] = $locale;
-                    }
+                    $list[] = $locale;
                 }
             }
+            $list = array_unique($list);
+            Config::inst()->update('TranslatableDataObject', 'locales', empty($list) ? null : $list);
         } else {
-            self::$locales = null;
+            Config::inst()->update('TranslatableDataObject', 'locales', null);
         }
     }
 
     /**
      * Get the list of locales that should be translated.
      * @return array|null array of locales if they have been defined using set_locales, null otherwise
+     * @deprecated 2.0 use the config system instead. Eg. TranslatableDataObject::config()->locales
      */
     public static function get_locales()
     {
-        return self::$locales;
+        self::config()->get('locales');
     }
 
     /**
@@ -580,10 +587,10 @@ class TranslatableDataObject extends DataExtension
     protected static function get_target_locales()
     {
         // if locales are explicitly set, use these
-        if (is_array(self::$locales)) {
-            return self::$locales;
+        if (is_array(self::get_locales())) {
+            return self::get_locales();
             // otherwise check the allowed locales. If these have been set, use these
-        } elseif (Translatable::get_allowed_locales() !== null) {
+        } else if (Translatable::get_allowed_locales() !== null) {
             return Translatable::get_allowed_locales();
         } else {
             // last resort is to take the existing content languages
