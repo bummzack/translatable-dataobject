@@ -291,6 +291,9 @@ class TranslatableDataObject extends DataExtension
     {
         $localizedField = $this->getLocalizedFieldName($fieldName);
 
+        // ensure that $strict is a boolean value
+        $strict = filter_var($strict, FILTER_VALIDATE_BOOLEAN);
+
         /** @var DBField $value */
         $value = $this->owner->dbObject($localizedField);
         if (!$strict && !$value->exists()) {
