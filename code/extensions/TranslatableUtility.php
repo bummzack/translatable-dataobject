@@ -100,9 +100,9 @@ class TranslatableUtility extends DataExtension
                 'Language' => DBField::create_field('Varchar',
                         strtoupper(i18n::get_lang_from_locale($locale))),
                 // the language as written in its native language
-                'Title'    => DBField::create_field('Varchar', ucfirst(html_entity_decode(
-                            i18n::get_language_name(i18n::get_lang_from_locale($locale), true),
-                            ENT_NOQUOTES, 'UTF-8'))),
+                'Title'    => DBField::create_field('Varchar', html_entity_decode(
+                    i18n::get_language_name(i18n::get_lang_from_locale($locale), true), ENT_NOQUOTES, 'UTF-8'
+                )),
                 // linking mode (useful for css class)
                 'LinkingMode' => $currentLocale == $locale ? 'current' : 'link',
                 // link to the translation or the home-page if no translation exists for the current page
