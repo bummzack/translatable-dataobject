@@ -321,6 +321,10 @@ class TranslatableDataObject extends DataExtension
             $member = Member::currentUser();
         }
 
+        // Always allow on cli and for non-logged users in dev mode
+        if ((!$member && Director::isDev()) || Director::is_cli())
+            return true;
+
         // check for locale
         $allowedLocale = (
             !is_array(Translatable::get_allowed_locales())
