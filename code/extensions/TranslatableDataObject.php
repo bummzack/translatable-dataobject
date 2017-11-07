@@ -64,7 +64,8 @@ class TranslatableDataObject extends DataExtension
         }
 
         return array(
-            'db' => self::collectDBFields($class)
+            'db' => self::collectDBFields($class),
+            'has_one' => self::collectHasOneRelations($class)
         );
     }
 
@@ -136,8 +137,9 @@ class TranslatableDataObject extends DataExtension
         // get target locales
         $locales = self::get_target_locales();
 
-        // get translated fields
+        // get translated fields and relations
         $fieldNames = self::get_localized_class_fields($this->owner->class);
+        $relationNames = array_keys(self::$localizedFields[$this->owner->class . '_has_one']);
 
         if (empty($fieldNames)) {
             user_error('No localized fields for the given object found', E_USER_WARNING);
@@ -175,6 +177,13 @@ class TranslatableDataObject extends DataExtension
 
             foreach ($fieldNames as $fieldName) {
                 $tab->push($this->getLocalizedFormField($fieldName, $locale));
+            }
+
+            //@todo: how to preserve order of fields?
+            foreach ($relationNames as $fieldName) {
+                if ($relationField = $this->getLocalizedRelationField($fieldName, $locale)) {
+                    $tab->push($relationField);
+                }
             }
 
             $set->push($tab);
@@ -224,6 +233,30 @@ class TranslatableDataObject extends DataExtension
     }
 
     /**
+     * Get a form field for the given relation name
+     *
+     * @todo  default field for has_one?
+     *
+     * @param string $fieldName
+     * @param string $locale
+     * @return FormField
+     */
+    public function getLocalizedRelationField($fieldName, $locale){
+        $baseName = $this->getBasename($fieldName);
+        $localizedFieldName = self::localized_field($fieldName, $locale);
+
+        $field = null;
+
+        if ($field = $this->getFieldForRelation($fieldName)) {
+            $relationField = clone $field;
+            $relationField->setName($localizedFieldName);
+            return $relationField;
+        }
+
+    }
+
+
+    /**
      * A template accessor used to get the translated version of a given field.
      * Does the same as @see getLocalizedValue
      *
@@ -235,7 +268,16 @@ class TranslatableDataObject extends DataExtension
      */
     public function T($field, $strict = true, $parseShortCodes = false)
     {
-        return $this->getLocalizedValue($field, $strict, $parseShortCodes);
+        if (self::isLocalizedField($field)) {
+            return $this->getLocalizedValue($field, $strict, $parseShortCodes);
+        }
+
+        if (self::isLocalizedRelation($field)) {
+            return $this->getLocalizedRelation($field, $strict);
+        }
+
+        //@todo throw an exception?
+        return false;
     }
 
     /**
@@ -272,12 +314,39 @@ class TranslatableDataObject extends DataExtension
      */
     public function getLocalizedFieldName($fieldName)
     {
-        if (!$this->isLocalizedField($fieldName)) {
-            trigger_error("Field '$fieldName' is not a localized field", E_USER_ERROR);
-            return null;
+        if ($this->isLocalizedField($fieldName) || $this->isLocalizedRelation($fieldName)) {
+            return self::localized_field($fieldName);
+        }
+        trigger_error("Field '$fieldName' is not a localized field", E_USER_ERROR);
+    }
+
+    /**
+     * Check if the given field name is a localized has_one relation
+     * @param string $fieldName the name of the relation without any locale extension. Eg. "Attachment"
+     * @return bool
+     */
+    public function isLocalizedRelation($fieldName){
+        return isset(self::$localizedFields[$this->ownerBaseClass . '_has_one'][$fieldName]);
+    }
+
+    /**
+     * Get the localized object for a given relation.
+     * @param string $fieldName the name of the field without any locale extension. Eg. "Title"
+     * @param boolean $strict if false, this will fallback to the master version of the field!
+     */
+    public function getLocalizedRelation($fieldName, $strict = true){
+        $localizedField = $this->getLocalizedFieldName($fieldName);
+
+        if($strict){
+            return $this->owner->getRelation($localizedField);
         }
 
-        return self::localized_field($fieldName);
+        // if not strict, check localized first and fallback to fieldname
+        if($value = $this->owner->getRelation($localizedField)){
+            return $value;
+        }
+
+        return $this->owner->getRelation($fieldName);
     }
 
     /**
@@ -590,6 +659,77 @@ class TranslatableDataObject extends DataExtension
     }
 
     /**
+     * Collect all additional has_one relations of the given class.
+     * @param string $class
+     * @return array
+     */
+    protected static function collectHasOneRelations($class){
+        if(isset(self::$collectorCache[$class . '_has_one'])){
+            return self::$collectorCache[$class . '_has_one'];
+        }
+
+        if(isset(self::$collectorLock[$class . '_has_one']) && self::$collectorLock[$class . '_has_one']){
+            return null;
+        }
+        self::$collectorLock[$class . '_has_one'] = true;
+
+
+        // Get all DB Fields
+        $fields = array();
+        Config::inst()->get($class, 'has_one', Config::EXCLUDE_EXTRA_SOURCES, $fields);
+
+        // Get all arguments
+        $arguments = self::get_arguments($class);
+
+        $locales = self::get_target_locales();
+
+        // remove the default locale
+        if(($index = array_search(Translatable::default_locale(), $locales)) !== false) {
+            array_splice($locales, $index, 1);
+        }
+
+        // fields that should be translated
+        $fieldsToTranslate = array();
+
+        // validate the arguments
+        if($arguments){
+            foreach($arguments as $field){
+                // only allow fields that are actually in our field list
+                if(array_key_exists($field, $fields)){
+                    $fieldsToTranslate[] = $field;
+                }
+            }
+        } else {
+            // check for the given default field types and add all fields of that type
+            foreach($fields as $field => $type){
+                $typeClean = (($p = strpos($type, '(')) !== false) ? substr($type, 0, $p) : $type;
+                if(in_array($typeClean, self::$default_field_types)){
+                    $fieldsToTranslate[] = $field;
+                }
+            }
+        }
+
+
+        // gather all the DB fields
+        $additionalFields = array();
+        self::$localizedFields[$class . '_has_one'] = array();
+        foreach($fieldsToTranslate as $field){
+            self::$localizedFields[$class . '_has_one'][$field] = array();
+            foreach($locales as $locale){
+                $localizedName = self::localized_field($field, $locale);
+                self::$localizedFields[$class . '_has_one'][$field][] = $localizedName;
+                $additionalFields[$localizedName] = $fields[$field];
+            }
+        }
+
+        self::$collectorCache[$class . '_has_one'] = $additionalFields;
+        self::$collectorLock[$class . '_has_one'] = false;
+        return $additionalFields;
+    }
+
+
+
+    /**
      * Get the locales that should be translated
      * @return array containing the locales to use
      */
@@ -628,4 +768,26 @@ class TranslatableDataObject extends DataExtension
 
         return null;
     }
+
+    /**
+     * Setter for relation specific FormField. Will be cloned in scaffolding functions
+     * @param string    $fieldName
+     * @param FormField $field
+     */
+    public function setFieldForRelation($fieldName, FormField $field) {
+        if (self::isLocalizedRelation($fieldName)) {
+            self::$localizedFields[$this->ownerBaseClass . '_has_one'][$fieldName]['FormField'] = $field;
+        }
+    }
+
+    /**
+     * @param $fieldName
+     */
+    public function getFieldForRelation($fieldName){
+        if (self::isLocalizedRelation($fieldName)
+            && array_key_exists('FormField', self::$localizedFields[$this->ownerBaseClass . '_has_one'][$fieldName])) {
+            return self::$localizedFields[$this->ownerBaseClass . '_has_one'][$fieldName]['FormField'];
+        }
+    }
+
 }
