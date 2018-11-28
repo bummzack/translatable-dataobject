@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Extension that creates translated form fields for files
  * @author bummzack
@@ -31,7 +32,7 @@ class TranslatedFile extends DataExtension
         } else {
             $fieldName = 'Translate' . $name;
             // for all other languages, access the files in read-only
-            if (!empty($sortField) && $collection instanceof SS_Sortable){
+            if (!empty($sortField) && $collection instanceof SS_Sortable) {
                 /** @var UploadField $uploadField */
                 $uploadField = UploadField::create($fieldName, $title, $collection->sort($sortField));
             } else {

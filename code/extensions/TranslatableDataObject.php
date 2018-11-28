@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Translatable extension, inspired by Uncle Cheese's implementation
  * https://github.com/unclecheese/TranslatableDataObject but tailored to be used
@@ -241,7 +242,8 @@ class TranslatableDataObject extends DataExtension
      * @param string $locale
      * @return FormField
      */
-    public function getLocalizedRelationField($fieldName, $locale){
+    public function getLocalizedRelationField($fieldName, $locale)
+    {
         $baseName = $this->getBasename($fieldName);
         $localizedFieldName = self::localized_field($fieldName, $locale);
 
@@ -325,7 +327,8 @@ class TranslatableDataObject extends DataExtension
      * @param string $fieldName the name of the relation without any locale extension. Eg. "Attachment"
      * @return bool
      */
-    public function isLocalizedRelation($fieldName){
+    public function isLocalizedRelation($fieldName)
+    {
         return isset(self::$localizedFields[$this->ownerBaseClass . '_has_one'][$fieldName]);
     }
 
@@ -334,15 +337,16 @@ class TranslatableDataObject extends DataExtension
      * @param string $fieldName the name of the field without any locale extension. Eg. "Title"
      * @param boolean $strict if false, this will fallback to the master version of the field!
      */
-    public function getLocalizedRelation($fieldName, $strict = true){
+    public function getLocalizedRelation($fieldName, $strict = true)
+    {
         $localizedField = $this->getLocalizedFieldName($fieldName);
 
-        if($strict){
+        if ($strict) {
             return $this->owner->getRelation($localizedField);
         }
 
         // if not strict, check localized first and fallback to fieldname
-        if($value = $this->owner->getRelation($localizedField)){
+        if ($value = $this->owner->getRelation($localizedField)) {
             return $value;
         }
 
@@ -663,12 +667,13 @@ class TranslatableDataObject extends DataExtension
      * @param string $class
      * @return array
      */
-    protected static function collectHasOneRelations($class){
-        if(isset(self::$collectorCache[$class . '_has_one'])){
+    protected static function collectHasOneRelations($class)
+    {
+        if (isset(self::$collectorCache[$class . '_has_one'])) {
             return self::$collectorCache[$class . '_has_one'];
         }
 
-        if(isset(self::$collectorLock[$class . '_has_one']) && self::$collectorLock[$class . '_has_one']){
+        if (isset(self::$collectorLock[$class . '_has_one']) && self::$collectorLock[$class . '_has_one']) {
             return null;
         }
         self::$collectorLock[$class . '_has_one'] = true;
@@ -683,7 +688,7 @@ class TranslatableDataObject extends DataExtension
         $locales = self::get_target_locales();
 
         // remove the default locale
-        if(($index = array_search(Translatable::default_locale(), $locales)) !== false) {
+        if (($index = array_search(Translatable::default_locale(), $locales)) !== false) {
             array_splice($locales, $index, 1);
         }
 
@@ -691,18 +696,18 @@ class TranslatableDataObject extends DataExtension
         $fieldsToTranslate = array();
 
         // validate the arguments
-        if($arguments){
-            foreach($arguments as $field){
+        if ($arguments) {
+            foreach ($arguments as $field) {
                 // only allow fields that are actually in our field list
-                if(array_key_exists($field, $fields)){
+                if (array_key_exists($field, $fields)) {
                     $fieldsToTranslate[] = $field;
                 }
             }
         } else {
             // check for the given default field types and add all fields of that type
-            foreach($fields as $field => $type){
+            foreach ($fields as $field => $type) {
                 $typeClean = (($p = strpos($type, '(')) !== false) ? substr($type, 0, $p) : $type;
-                if(in_array($typeClean, self::$default_field_types)){
+                if (in_array($typeClean, self::$default_field_types)) {
                     $fieldsToTranslate[] = $field;
                 }
             }
@@ -712,9 +717,9 @@ class TranslatableDataObject extends DataExtension
         // gather all the DB fields
         $additionalFields = array();
         self::$localizedFields[$class . '_has_one'] = array();
-        foreach($fieldsToTranslate as $field){
+        foreach ($fieldsToTranslate as $field) {
             self::$localizedFields[$class . '_has_one'][$field] = array();
-            foreach($locales as $locale){
+            foreach ($locales as $locale) {
                 $localizedName = self::localized_field($field, $locale);
                 self::$localizedFields[$class . '_has_one'][$field][] = $localizedName;
                 $additionalFields[$localizedName] = $fields[$field];
@@ -725,7 +730,6 @@ class TranslatableDataObject extends DataExtension
         self::$collectorLock[$class . '_has_one'] = false;
         return $additionalFields;
     }
-
 
 
     /**
@@ -770,10 +774,11 @@ class TranslatableDataObject extends DataExtension
 
     /**
      * Setter for relation specific FormField. Will be cloned in scaffolding functions
-     * @param string    $fieldName
+     * @param string $fieldName
      * @param FormField $field
      */
-    public function setFieldForRelation($fieldName, FormField $field) {
+    public function setFieldForRelation($fieldName, FormField $field)
+    {
         if (self::isLocalizedRelation($fieldName)) {
             self::$localizedFields[$this->ownerBaseClass . '_has_one'][$fieldName]['FormField'] = $field;
         }
@@ -782,7 +787,8 @@ class TranslatableDataObject extends DataExtension
     /**
      * @param $fieldName
      */
-    public function getFieldForRelation($fieldName){
+    public function getFieldForRelation($fieldName)
+    {
         if (self::isLocalizedRelation($fieldName)
             && array_key_exists('FormField', self::$localizedFields[$this->ownerBaseClass . '_has_one'][$fieldName])) {
             return self::$localizedFields[$this->ownerBaseClass . '_has_one'][$fieldName]['FormField'];

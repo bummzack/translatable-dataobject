@@ -1,4 +1,5 @@
 <?php
+
 class TranslatableFormFieldTransformation extends FormTransformation
 {
 
@@ -58,19 +59,19 @@ class TranslatableFormFieldTransformation extends FormTransformation
     {
         /** @var CompositeField $nonEditableField_holder */
         $nonEditableField_holder = CompositeField::create($nonEditableField);
-        $nonEditableField_holder->setName($fieldname.'_holder');
+        $nonEditableField_holder->setName($fieldname . '_holder');
         $nonEditableField_holder->addExtraClass('originallang_holder');
         $nonEditableField->setValue($this->original->$fieldname);
-        $nonEditableField->setName($fieldname.'_original');
+        $nonEditableField->setName($fieldname . '_original');
         $nonEditableField->addExtraClass('originallang');
         $nonEditableField->setTitle(_t(
-                'Translatable_Transform.OriginalFieldLabel',
-                'Original {title}',
-                'Label for the original value of the translatable field.',
-                array('title'=>$originalField->Title())
+            'Translatable_Transform.OriginalFieldLabel',
+            'Original {title}',
+            'Label for the original value of the translatable field.',
+            array('title' => $originalField->Title())
         ));
 
-        $nonEditableField_holder->insertBefore($originalField, $fieldname.'_original');
+        $nonEditableField_holder->insertBefore($originalField, $fieldname . '_original');
         return $nonEditableField_holder;
     }
 }

@@ -9,8 +9,8 @@
  * translatable module is a requirement: https://github.com/silverstripe/silverstripe-translatable
  */
 
-if(!defined('TRANSLATABLE_COLUMN_SEPARATOR')){
-	define('TRANSLATABLE_COLUMN_SEPARATOR', '__');
+if (!defined('TRANSLATABLE_COLUMN_SEPARATOR')) {
+    define('TRANSLATABLE_COLUMN_SEPARATOR', '__');
 }
 
 SiteTree::add_extension('TranslatableUtility');

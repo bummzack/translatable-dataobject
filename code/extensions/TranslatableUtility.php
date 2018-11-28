@@ -1,4 +1,5 @@
 <?php
+
 class TranslatableUtility extends DataExtension
 {
     /**
@@ -26,7 +27,7 @@ class TranslatableUtility extends DataExtension
     {
         $table = Versioned::current_stage() == 'Live' ? 'SiteTree_Live' : 'SiteTree';
 
-        if(class_exists('SQLSelect')){
+        if (class_exists('SQLSelect')) {
             $query = new SQLSelect("Distinct \"Locale\"", "\"$table\"");
         } else {
             // SS 3.1 compat
@@ -61,9 +62,9 @@ class TranslatableUtility extends DataExtension
      * <code>
      * <!-- in your template -->
      * <ul class="langNav">
-     * 		<% loop Languages %>
-     * 		<li><a href="$Link" class="$LinkingMode" title="$Title.ATT">$Language</a></li>
-     * 		<% end_loop %>
+     *   <% loop Languages %>
+     *   <li><a href="$Link" class="$LinkingMode" title="$Title.ATT">$Language</a></li>
+     *   <% end_loop %>
      * </ul>
      * </code>
      *
@@ -98,9 +99,9 @@ class TranslatableUtility extends DataExtension
                 'RFC1766' => i18n::convert_rfc1766($locale),
                 // the language 2 letter code (eg. EN)
                 'Language' => DBField::create_field('Varchar',
-                        strtoupper(i18n::get_lang_from_locale($locale))),
+                    strtoupper(i18n::get_lang_from_locale($locale))),
                 // the language as written in its native language
-                'Title'    => DBField::create_field('Varchar', html_entity_decode(
+                'Title' => DBField::create_field('Varchar', html_entity_decode(
                     i18n::get_language_name(i18n::get_lang_from_locale($locale), true), ENT_NOQUOTES, 'UTF-8'
                 )),
                 // linking mode (useful for css class)
