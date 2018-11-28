@@ -675,8 +675,7 @@ class TranslatableDataObject extends DataExtension
 
 
         // Get all DB Fields
-        $fields = array();
-        Config::inst()->get($class, 'has_one', Config::EXCLUDE_EXTRA_SOURCES, $fields);
+        $fields = (array)Config::inst()->get($class, 'has_one', Config::EXCLUDE_EXTRA_SOURCES);
 
         // Get all arguments
         $arguments = self::get_arguments($class);
