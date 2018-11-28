@@ -4,7 +4,7 @@
 	"description": "Silverstripe Translatable extension for DataObjects",
 	"homepage": "https://github.com/bummzack/translatable-dataobject",
 	"keywords": ["silverstripe", "translatable", "dataobject"],
-	"license": "MIT License",
+	"license": "MIT",
 	"authors":[
 		{
 			"name": "Roman Schmid",
