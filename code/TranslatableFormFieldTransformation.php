@@ -43,7 +43,12 @@ class TranslatableFormFieldTransformation extends FormTransformation
         $fieldname = $field->getName();
         if ($this->original->isLocalizedField($fieldname)) {
             $field->setName($this->original->getLocalizedFieldName($fieldname));
-            $field->setValue($this->original->getLocalizedValue($fieldname));
+            $value = $this->original->getLocalizedValue($fieldname);
+            if ($value instanceof DBField) {
+                $field->setValue($value->getValue());
+            } else {
+                $field->setValue($value);
+            }
         }
 
         return $this->baseTransform($newfield, $field, $fieldname);
