@@ -99,17 +99,13 @@ class TranslatedFile extends DataExtension
     {
         // only apply the update to files (not folders)
         if ($this->owner->class != 'Folder') {
-            // remove all the translated fields
-            $translatedFields = TranslatableDataObject::get_localized_class_fields($this->owner->class);
-            if (!empty($translatedFields)) {
-                foreach ($translatedFields as $fieldName) {
-                    $fields->removeByName($fieldName, true);
-                }
-            }
-
             // add the tabs from the translatable tab set to the fields
             /** @var TabSet $set */
             $set = $this->owner->getTranslatableTabSet();
+
+            // Remove the tab of the default locale (these are in the "main" tab)
+            $set->removeByName(Translatable::default_locale());
+
             foreach ($set->FieldList() as $tab) {
                 $fields->addFieldToTab('Root', $tab);
             }

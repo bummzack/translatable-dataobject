@@ -140,7 +140,9 @@ class TranslatableDataObject extends DataExtension
 
         // get translated fields and relations
         $fieldNames = self::get_localized_class_fields($this->owner->class);
-        $relationNames = array_keys(self::$localizedFields[$this->owner->class . '_has_one']);
+        if (isset(self::$localizedFields[$this->owner->class . '_has_one'])) {
+            $relationNames = array_keys(self::$localizedFields[$this->owner->class . '_has_one']);
+        }
 
         if (empty($fieldNames)) {
             user_error('No localized fields for the given object found', E_USER_WARNING);
@@ -181,9 +183,11 @@ class TranslatableDataObject extends DataExtension
             }
 
             //@todo: how to preserve order of fields?
-            foreach ($relationNames as $fieldName) {
-                if ($relationField = $this->getLocalizedRelationField($fieldName, $locale)) {
-                    $tab->push($relationField);
+            if (!empty($relationNames)) {
+                foreach ($relationNames as $fieldName) {
+                    if ($relationField = $this->getLocalizedRelationField($fieldName, $locale)) {
+                        $tab->push($relationField);
+                    }
                 }
             }
 
